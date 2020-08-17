@@ -1,0 +1,11 @@
+- Send money from a user to another
+- User authentication - token authentication
+- User authorization - Login and Logout
+- Redis for caching
+- Database transactions
+- Using go's inbuilt sql package
+- Each user can see other user's profile and their details
+- Postgres Server
+- Connect to Paystack api for final payment
+- Verify that a user has funds before being able to send money
+
