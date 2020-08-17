@@ -14,13 +14,21 @@ type healthJSON struct {
 
 func HealthCheck(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	resp := &healthJSON{
-		Name:   "REST based wallet api, up and running",
-		Active: true,
+
+	switch req.Method {
+	case http.MethodGet:
+		w.WriteHeader(http.StatusOK)
+		resp := &healthJSON{
+			Name:   "REST based wallet api, up and running",
+			Active: true,
+		}
+		jsonResp, _ := json.Marshal(resp)
+		fmt.Fprint(w, string(jsonResp))
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"message" : "Method Not Allowed"}`)
 	}
-	jsonResp, _ := json.Marshal(resp)
-	fmt.Fprint(w, string(jsonResp))
+
 }
 
 func GetServerAddress() string {
