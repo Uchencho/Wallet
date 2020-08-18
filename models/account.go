@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type User struct {
+type Accounts struct {
 	ID        uint      `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
@@ -18,9 +18,8 @@ type User struct {
 	LastLogin time.Time `json:"last_login"`
 }
 
-// query = "DROP TABLE IF EXISTS test; CREATE TABLE test(name VARCHAR(50), designation VARCHAR(100), age VARCHAR(50));"
-
 func CreateTable(db *sql.DB) {
+
 	query := `CREATE TABLE IF NOT EXISTS accounts (
 		id serial PRIMARY KEY,
 		username VARCHAR ( 50 ) UNIQUE NOT NULL,
@@ -28,14 +27,27 @@ func CreateTable(db *sql.DB) {
 		password VARCHAR ( 50 ) NOT NULL,
 		fullname VARCHAR ( 200 ),
 		gender VARCHAR ( 200 ),
-		activated VARCHAR ( 10 ),
+		activated BOOL,
 		created_on TIMESTAMP,
 		last_login TIMESTAMP
 		);`
+
 	_, err := db.Exec(query)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("\n\n Created the table successfully")
+}
+
+// Droptable which is used to drop the accounts table is currently not in use
+func DropTable(db *sql.DB) {
+	query := `DROP TABLE IF EXISTS accounts`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("\n\n Table dropped successfully")
 }
