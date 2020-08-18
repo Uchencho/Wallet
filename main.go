@@ -52,6 +52,8 @@ func main() {
 		panic(bdErr)
 	}
 
+	models.CreateTable(db)
+
 	http.HandleFunc("/healthcheck", HealthCheck)
 	if err := http.ListenAndServe(GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
