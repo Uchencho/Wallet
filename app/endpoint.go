@@ -25,13 +25,13 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 		}
 		user.CreatedOn = time.Now()
 
-		respId := models.AddRecordToAccounts(Db, user)
-		jsonResp, err := json.Marshal(respId)
-		if err != nil {
-			fmt.Println(err)
+		if created := models.AddRecordToAccounts(Db, user); created {
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprint(w, `{"Message" : "Successfully Created"}`)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "User already exists, please login"}`)
 		}
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprint(w, string(jsonResp))
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)

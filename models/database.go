@@ -25,6 +25,12 @@ func ConnectDatabase() *sql.DB {
 		fmt.Println(err)
 		panic("Failed to connect to database")
 	}
+
+	bdErr := db.Ping()
+	if bdErr != nil {
+		panic(bdErr)
+	}
+
 	fmt.Println("Connected")
 
 	return db

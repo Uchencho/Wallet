@@ -47,12 +47,7 @@ func main() {
 
 	defer app.Db.Close()
 
-	bdErr := app.Db.Ping()
-	if bdErr != nil {
-		panic(bdErr)
-	}
-
-	models.CreateTable(app.Db)
+	models.CreateAccountTable(app.Db)
 
 	http.HandleFunc("/healthcheck", HealthCheck)
 	http.HandleFunc("/register", app.RegisterUser)

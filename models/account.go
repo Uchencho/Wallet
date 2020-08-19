@@ -18,7 +18,7 @@ type Accounts struct {
 	LastLogin time.Time `json:"last_login"`
 }
 
-func CreateTable(db *sql.DB) {
+func CreateAccountTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS accounts (
 		id serial PRIMARY KEY,
@@ -36,8 +36,6 @@ func CreateTable(db *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println("\n\n Created the table successfully")
 }
 
 // Droptable which is used to drop the accounts table is currently not in use
@@ -52,7 +50,11 @@ func DropTable(db *sql.DB) {
 	fmt.Println("\n\n Table dropped successfully")
 }
 
-func AddRecordToAccounts(db *sql.DB, user Accounts) (id int) {
+func AddRecordToAccounts(db *sql.DB, user Accounts) bool {
+
+	if userExists := checkUser(db, user); userExists {
+		return false
+	}
 
 	query := `INSERT INTO accounts (
 		username, email, password, created_on
@@ -60,10 +62,24 @@ func AddRecordToAccounts(db *sql.DB, user Accounts) (id int) {
 		$1, $2, $3, $4
 	) RETURNING id`
 
-	err := db.QueryRow(query, user.Username, user.Email, user.Password, user.CreatedOn).Scan(&id)
+	_, err := db.Exec(query, user.Username, user.Email, user.Password, user.CreatedOn)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("New record ID is: ", id)
-	return
+	return true
+}
+
+func checkUser(db *sql.DB, user Accounts) bool {
+	query := `SELECT email FROM accounts WHERE email = $1`
+
+	var email string
+	row := db.QueryRow(query, user.Email)
+	switch err := row.Scan(&email); err {
+	case sql.ErrNoRows:
+		return false
+	case nil:
+		return true
+	default:
+		panic(err)
+	}
 }
