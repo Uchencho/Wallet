@@ -24,6 +24,7 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 			panic(err)
 		}
 		user.CreatedOn = time.Now()
+		user.Password, _ = hashPassword(user.Password)
 
 		if created := models.AddRecordToAccounts(Db, user); created {
 			w.WriteHeader(http.StatusCreated)

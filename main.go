@@ -47,6 +47,7 @@ func main() {
 
 	defer app.Db.Close()
 
+	models.DropTable(app.Db)
 	models.CreateAccountTable(app.Db)
 
 	http.HandleFunc("/healthcheck", HealthCheck)
