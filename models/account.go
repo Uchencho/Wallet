@@ -51,3 +51,19 @@ func DropTable(db *sql.DB) {
 
 	fmt.Println("\n\n Table dropped successfully")
 }
+
+func AddRecordToAccounts(db *sql.DB, user Accounts) (id int) {
+
+	query := `INSERT INTO accounts (
+		username, email, password, created_on
+	) VALUES (
+		$1, $2, $3, $4
+	) RETURNING id`
+
+	err := db.QueryRow(query, user.Username, user.Email, user.Password, user.CreatedOn).Scan(&id)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("New record ID is: ", id)
+	return
+}

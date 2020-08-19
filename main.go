@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Uchencho/wallet/app"
 	"github.com/Uchencho/wallet/models"
 )
 
@@ -44,17 +45,17 @@ func GetServerAddress() string {
 
 func main() {
 
-	db := models.ConnectDatabase()
-	defer db.Close()
+	defer app.Db.Close()
 
-	bdErr := db.Ping()
+	bdErr := app.Db.Ping()
 	if bdErr != nil {
 		panic(bdErr)
 	}
 
-	models.CreateTable(db)
+	models.CreateTable(app.Db)
 
 	http.HandleFunc("/healthcheck", HealthCheck)
+	http.HandleFunc("/register", app.RegisterUser)
 	if err := http.ListenAndServe(GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}
