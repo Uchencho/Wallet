@@ -69,12 +69,14 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 		if loginDet.Username == "" || loginDet.Password == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message":"Username and Password is Required"}`)
+			return
 		}
 
 		user, err := models.GetUser(Db, loginDet.Username)
 		if err != nil {
-			fmt.Println(err)
-			panic(err)
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message":"User does not exist"}`)
+			return
 		}
 
 		if checkPasswordHash(loginDet.Password, user.Password) {
@@ -97,8 +99,15 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 				fmt.Println(err)
 			}
 
-			w.WriteHeader(http.StatusOK)
+			expire := time.Now().Add(time.Minute * 60)
+			cookie := http.Cookie{Name: "Refreshtoken", Value: "checking", Path: "/",
+				Expires: expire, RawExpires: expire.Format(time.UnixDate),
+				Secure: true, HttpOnly: true}
+			http.SetCookie(w, &cookie)
 			fmt.Fprint(w, string(jsonResp))
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message":"Invalid credentials"}`)
 		}
 
 	default:
