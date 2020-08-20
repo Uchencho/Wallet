@@ -119,8 +119,7 @@ func TestAuth(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if authorized, err := checkAuth(req); !authorized {
-		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprint(w, err.Error())
+		unAuthorizedResponse(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)

@@ -60,30 +60,6 @@ func generateAuthTokens(user models.Accounts) (string, string, error) {
 	return accessString, refreshString, nil
 }
 
-func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		if r.Header["Token"] != nil {
-			token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("There was an error")
-				}
-				return signingKey, nil
-			})
-
-			if err != nil {
-				fmt.Fprint(w, err.Error())
-			}
-
-			if token.Valid {
-				endpoint(w, r)
-			}
-		} else {
-			fmt.Fprint(w, "Not Authorized")
-		}
-	})
-}
-
 func checkAuth(r *http.Request) (bool, error) {
 	if r.Header["Authorization"] != nil {
 		accessToken := strings.Split(r.Header["Authorization"][0], " ")[1]
@@ -94,13 +70,19 @@ func checkAuth(r *http.Request) (bool, error) {
 			return signingKey, nil
 		})
 		if err != nil {
-			fmt.Println(err)
 			return false, err
 		}
 		if token.Valid {
 			return true, nil
 		}
 	}
-	fmt.Println(r.Header["Authorization"])
 	return false, errors.New("Credentials not provided")
+}
+
+func unAuthorizedResponse(w http.ResponseWriter, err error) {
+	cookie := http.Cookie{Name: "Refreshtoken", Value: "", Path: "/",
+		MaxAge: -1, HttpOnly: true}
+	http.SetCookie(w, &cookie)
+	w.WriteHeader(http.StatusForbidden)
+	fmt.Fprint(w, err.Error())
 }
