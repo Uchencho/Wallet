@@ -80,7 +80,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if checkPasswordHash(loginDet.Password, user.Password) {
-			jwtString, err := generateJWT(user)
+			accessToken, refreshToken, err := generateAuthTokens(user)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -92,17 +92,16 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 				Activated: user.Activated,
 				CreatedOn: user.CreatedOn,
 				LastLogin: user.LastLogin,
-				Token:     jwtString,
+				Token:     accessToken,
 			}
 			jsonResp, err := json.Marshal(b)
 			if err != nil {
 				fmt.Println(err)
 			}
 
-			expire := time.Now().Add(time.Minute * 60)
-			cookie := http.Cookie{Name: "Refreshtoken", Value: "checking", Path: "/",
-				Expires: expire, RawExpires: expire.Format(time.UnixDate),
-				Secure: true, HttpOnly: true}
+			expire := time.Now().Add(time.Hour * 6)
+			cookie := http.Cookie{Name: "Refreshtoken", Value: refreshToken, Path: "/",
+				Expires: expire, HttpOnly: true} // extra agruement, Secure : true, test this on deployment
 			http.SetCookie(w, &cookie)
 			fmt.Fprint(w, string(jsonResp))
 		} else {
