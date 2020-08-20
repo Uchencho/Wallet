@@ -83,3 +83,20 @@ func checkUser(db *sql.DB, user Accounts) bool {
 		panic(err)
 	}
 }
+
+func GetUser(db *sql.DB, username string) (Accounts, error) {
+	query := `SELECT id, username, email, password FROM accounts WHERE username = $1`
+
+	var user Accounts
+
+	row := db.QueryRow(query, username)
+	switch err := row.Scan(&user.ID, &user.Username, &user.Email,
+		&user.Password); err {
+	case sql.ErrNoRows:
+		return Accounts{}, err
+	case nil:
+		return user, nil
+	default:
+		panic(err)
+	}
+}

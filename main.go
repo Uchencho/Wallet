@@ -51,6 +51,7 @@ func main() {
 
 	http.HandleFunc("/healthcheck", HealthCheck)
 	http.HandleFunc("/register", app.RegisterUser)
+	http.HandleFunc("/login", app.LoginUser)
 	if err := http.ListenAndServe(GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}
