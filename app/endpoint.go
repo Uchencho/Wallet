@@ -15,8 +15,15 @@ type loginInfo struct {
 }
 
 type loginResponse struct {
-	Token   string          `json:"token"`
-	UserDet models.Accounts `json:"UserDet"`
+	ID        uint      `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Fullname  string    `json:"fullname"`
+	Gender    string    `json:"gender"`
+	Activated bool      `json:"activated"`
+	CreatedOn time.Time `json:"created_on"`
+	LastLogin time.Time `json:"last_login"`
+	Token     string    `json:"token"`
 }
 
 var Db = models.ConnectDatabase()
@@ -58,10 +65,10 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 	case http.MethodPost:
 		var loginDet loginInfo
 
-		err := json.NewDecoder(req.Body).Decode(&loginDet)
-		if err != nil {
-			// Return a 400 bad request here
-			fmt.Println(err)
+		_ = json.NewDecoder(req.Body).Decode(&loginDet)
+		if loginDet.Username == "" || loginDet.Password == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message":"Username and Password is Required"}`)
 		}
 
 		user, err := models.GetUser(Db, loginDet.Username)
@@ -76,8 +83,14 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 				fmt.Println(err)
 			}
 			b := loginResponse{
-				Token:   jwtString,
-				UserDet: user,
+				ID:        user.ID,
+				Username:  user.Username,
+				Email:     user.Email,
+				Gender:    user.Gender,
+				Activated: user.Activated,
+				CreatedOn: user.CreatedOn,
+				LastLogin: user.LastLogin,
+				Token:     jwtString,
 			}
 			jsonResp, err := json.Marshal(b)
 			if err != nil {
