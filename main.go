@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/Uchencho/wallet/app"
+	"github.com/Uchencho/wallet/models"
 )
 
 type healthJSON struct {
@@ -41,7 +44,13 @@ func GetServerAddress() string {
 }
 
 func main() {
+
+	defer app.Db.Close()
+
+	models.CreateAccountTable(app.Db)
+
 	http.HandleFunc("/healthcheck", HealthCheck)
+	http.HandleFunc("/register", app.RegisterUser)
 	if err := http.ListenAndServe(GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}
