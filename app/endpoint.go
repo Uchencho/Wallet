@@ -130,7 +130,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case http.MethodGet:
-		// Get the user details from the db
+
 		user, _ := models.GetUser(Db, fmt.Sprint(username))
 		b := loginResponse{
 			ID:        user.ID,
@@ -153,30 +153,24 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		var user models.Accounts
 
 		_ = json.NewDecoder(req.Body).Decode(&user)
-		user.Username = fmt.Sprint(username)
-		err := models.EditUser(Db, &user)
-		fmt.Println(err)
-		if err != nil {
-			w.WriteHeader(http.StatusAccepted)
-			fmt.Fprint(w, `{"Message" : "Successfully Edited"}`)
+		if user.Fullname == "" && user.Gender == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message":"Fullname or Gender is Required"}`)
 			return
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"Message" : "Mba"}`)
+
+		user.Username = fmt.Sprint(username)
+		err := models.EditUser(Db, &user)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Something went Wrong"}`)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprint(w, `{"Message" : "Successfully Edited"}`)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
-}
-
-func TestAuth(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if authorized, _, err := checkAuth(req); !authorized {
-		unAuthorizedResponse(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `{"Message":"Auth working properly"}`)
 }

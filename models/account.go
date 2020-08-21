@@ -18,10 +18,6 @@ type Accounts struct {
 	LastLogin time.Time `json:"last_login"`
 }
 
-// type NullTime struct {
-// 	pq.NullTime
-// }
-
 func CreateAccountTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS accounts (
@@ -127,9 +123,7 @@ func EditUser(db *sql.DB, user *Accounts) error {
 
 	_, err := db.Exec(query, user.Fullname, user.Gender, user.Username)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
-	_ = db.Ping()
 	return nil
 }
