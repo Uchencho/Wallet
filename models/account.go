@@ -18,6 +18,10 @@ type Accounts struct {
 	LastLogin time.Time `json:"last_login"`
 }
 
+// type NullTime struct {
+// 	pq.NullTime
+// }
+
 func CreateAccountTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS accounts (
@@ -57,12 +61,13 @@ func AddRecordToAccounts(db *sql.DB, user Accounts) bool {
 	}
 
 	query := `INSERT INTO accounts (
-		username, email, password, created_on
+		username, email, password, created_on, last_login
 	) VALUES (
-		$1, $2, $3, $4
+		$1, $2, $3, $4, $5
 	) RETURNING id`
 
-	_, err := db.Exec(query, user.Username, user.Email, user.Password, user.CreatedOn)
+	_, err := db.Exec(query, user.Username, user.Email, user.Password,
+		user.CreatedOn, user.LastLogin)
 	if err != nil {
 		panic(err)
 	}
@@ -85,13 +90,14 @@ func checkUser(db *sql.DB, user Accounts) bool {
 }
 
 func GetUser(db *sql.DB, username string) (Accounts, error) {
-	query := `SELECT id, username, email, password FROM accounts WHERE username = $1`
+	query := `SELECT id, username, email, password, last_login, created_on
+			  FROM accounts WHERE username = $1`
 
 	var user Accounts
 
 	row := db.QueryRow(query, username)
 	switch err := row.Scan(&user.ID, &user.Username, &user.Email,
-		&user.Password); err {
+		&user.Password, &user.LastLogin, &user.CreatedOn); err {
 	case sql.ErrNoRows:
 		return Accounts{}, err
 	case nil:

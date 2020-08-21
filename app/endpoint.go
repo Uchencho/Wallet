@@ -41,6 +41,7 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 			panic(err)
 		}
 		user.CreatedOn = time.Now()
+		user.LastLogin = time.Now()
 		user.Password, _ = hashPassword(user.Password)
 
 		if created := models.AddRecordToAccounts(Db, user); created {
@@ -115,13 +116,48 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func TestAuth(w http.ResponseWriter, req *http.Request) {
+func UserProfile(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if authorized, err := checkAuth(req); !authorized {
+	authorized, username, err := checkAuth(req)
+	if !authorized {
 		unAuthorizedResponse(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusBadRequest)
+
+	switch req.Method {
+	case http.MethodGet:
+		// Get the user details from the db
+		user, _ := models.GetUser(Db, fmt.Sprint(username))
+		b := loginResponse{
+			ID:        user.ID,
+			Username:  user.Username,
+			Email:     user.Email,
+			Gender:    user.Gender,
+			Activated: user.Activated,
+			CreatedOn: user.CreatedOn,
+			LastLogin: user.LastLogin,
+		}
+
+		jsonResp, err := json.Marshal(b)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Fprint(w, string(jsonResp))
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+	}
+}
+
+func TestAuth(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if authorized, _, err := checkAuth(req); !authorized {
+		unAuthorizedResponse(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, `{"Message":"Auth working properly"}`)
 }

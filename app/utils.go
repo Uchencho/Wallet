@@ -60,7 +60,7 @@ func generateAuthTokens(user models.Accounts) (string, string, error) {
 	return accessString, refreshString, nil
 }
 
-func checkAuth(r *http.Request) (bool, error) {
+func checkAuth(r *http.Request) (bool, interface{}, error) {
 	if r.Header["Authorization"] != nil {
 		accessToken := strings.Split(r.Header["Authorization"][0], " ")[1]
 		token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
@@ -70,13 +70,14 @@ func checkAuth(r *http.Request) (bool, error) {
 			return signingKey, nil
 		})
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
-		if token.Valid {
-			return true, nil
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			return true, claims["client"], nil
 		}
 	}
-	return false, errors.New("Credentials not provided")
+	return false, "", errors.New("Credentials not provided")
 }
 
 func unAuthorizedResponse(w http.ResponseWriter, err error) {

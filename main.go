@@ -53,6 +53,7 @@ func main() {
 	http.HandleFunc("/register", app.RegisterUser)
 	http.HandleFunc("/login", app.LoginUser)
 	http.HandleFunc("/auth", app.TestAuth)
+	http.HandleFunc("/profile", app.UserProfile)
 	if err := http.ListenAndServe(GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}
