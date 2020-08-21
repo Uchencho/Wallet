@@ -35,11 +35,13 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 	case http.MethodPost:
 		var user models.Accounts
 
-		err := json.NewDecoder(req.Body).Decode(&user)
-		if err != nil {
-			fmt.Println(err)
-			panic(err)
+		_ = json.NewDecoder(req.Body).Decode(&user)
+		if user.Username == "" || user.Password == "" || user.Email == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message":"Username, Email and Password is Required"}`)
+			return
 		}
+
 		user.CreatedOn = time.Now()
 		user.LastLogin = time.Now()
 		user.Password, _ = hashPassword(user.Password)
@@ -89,6 +91,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 				ID:        user.ID,
 				Username:  user.Username,
 				Email:     user.Email,
+				Fullname:  user.Fullname,
 				Gender:    user.Gender,
 				Activated: user.Activated,
 				CreatedOn: user.CreatedOn,
@@ -133,6 +136,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 			ID:        user.ID,
 			Username:  user.Username,
 			Email:     user.Email,
+			Fullname:  user.Fullname,
 			Gender:    user.Gender,
 			Activated: user.Activated,
 			CreatedOn: user.CreatedOn,
@@ -144,6 +148,21 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 			fmt.Println(err)
 		}
 		fmt.Fprint(w, string(jsonResp))
+
+	case http.MethodPut:
+		var user models.Accounts
+
+		_ = json.NewDecoder(req.Body).Decode(&user)
+		user.Username = fmt.Sprint(username)
+		err := models.EditUser(Db, &user)
+		fmt.Println(err)
+		if err != nil {
+			w.WriteHeader(http.StatusAccepted)
+			fmt.Fprint(w, `{"Message" : "Successfully Edited"}`)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"Message" : "Mba"}`)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
