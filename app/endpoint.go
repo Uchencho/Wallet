@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -12,6 +13,10 @@ import (
 type loginInfo struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type accessToken struct {
+	Access string `json:"access"`
 }
 
 type loginResponse struct {
@@ -173,4 +178,41 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
+}
+
+func RefreshToken(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switch req.Method {
+	case http.MethodPost:
+		token, err := req.Cookie("Refreshtoken")
+		if err != nil {
+			unAuthorizedResponse(w, errors.New(`{"Message" : "Credentials Not Sent"}`))
+			return
+		}
+		if authorized, username, _ := checkRefreshToken(token.Value); authorized {
+			accessString, err := newAccessToken(fmt.Sprint(username))
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprint(w, `{"Message" : "Could not generate accesstoken"}`)
+				return
+			}
+			message := accessToken{accessString}
+			jsonResp, err := json.Marshal(message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			cookie := http.Cookie{Name: "Refreshtoken", Value: token.Value, Path: "/",
+				HttpOnly: true} // extra agruement, Secure : true, test this on deployment
+			http.SetCookie(w, &cookie)
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, string(jsonResp))
+			return
+		}
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+	}
+
 }

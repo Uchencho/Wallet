@@ -87,3 +87,39 @@ func unAuthorizedResponse(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusForbidden)
 	fmt.Fprint(w, err.Error())
 }
+
+func checkRefreshToken(refreshToken string) (bool, interface{}, error) {
+
+	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("An error occured")
+		}
+		return refreshSigningKey, nil
+	})
+	if err != nil {
+		return false, "", err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return true, claims["client"], nil
+	}
+
+	return false, "", errors.New("Credentials not provided")
+}
+
+func newAccessToken(username string) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["authorized"] = true
+	claims["client"] = username
+	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
+
+	accessString, err := token.SignedString(signingKey)
+
+	if err != nil {
+		return "", err
+	}
+
+	return accessString, nil
+}
