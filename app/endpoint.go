@@ -80,8 +80,9 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		user, err := models.GetUser(Db, loginDet.Username)
+		user, err := models.GetUserLogin(Db, loginDet.Username)
 		if err != nil {
+			fmt.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message":"User does not exist"}`)
 			return
