@@ -216,3 +216,25 @@ func RefreshToken(w http.ResponseWriter, req *http.Request) {
 	}
 
 }
+
+func Logout(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authorized, _, err := checkAuth(req)
+	if !authorized {
+		unAuthorizedResponse(w, err)
+		return
+	}
+	switch req.Method {
+	case http.MethodPost:
+		cookie := http.Cookie{Name: "Refreshtoken", Value: "", Path: "/",
+			MaxAge: -1, HttpOnly: true}
+		http.SetCookie(w, &cookie)
+		w.WriteHeader(http.StatusNoContent)
+		fmt.Fprint(w, `{"Message" : "Goodbye!"}`)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+	}
+
+}
