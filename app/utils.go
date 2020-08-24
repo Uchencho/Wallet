@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -62,6 +63,9 @@ func generateAuthTokens(user models.Accounts) (string, string, error) {
 
 func checkAuth(r *http.Request) (bool, interface{}, error) {
 	if r.Header["Authorization"] != nil {
+		if len(strings.Split(r.Header["Authorization"][0], " ")) < 2 {
+			return false, "", errors.New("Invalid Credentials")
+		}
 		accessToken := strings.Split(r.Header["Authorization"][0], " ")[1]
 		token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -122,4 +126,13 @@ func newAccessToken(username string) (string, error) {
 	}
 
 	return accessString, nil
+}
+
+func GetServerAddress() string {
+	const defaultServerAddress = "127.0.0.1:8000"
+	serverAddress, present := os.LookupEnv("SERVER_ADDRESS")
+	if present {
+		return serverAddress
+	}
+	return defaultServerAddress
 }
