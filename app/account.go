@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Uchencho/wallet/models"
+	"github.com/Uchencho/wallet/config"
 )
 
 type healthJSON struct {
@@ -36,7 +36,7 @@ type loginResponse struct {
 	Token     string    `json:"token"`
 }
 
-var Db = models.ConnectDatabase()
+var Db = config.ConnectDatabase()
 
 func HealthCheck(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -62,7 +62,7 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch req.Method {
 	case http.MethodPost:
-		var user models.Accounts
+		var user config.Accounts
 
 		_ = json.NewDecoder(req.Body).Decode(&user)
 		if user.Username == "" || user.Password == "" || user.Email == "" {
@@ -75,7 +75,7 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 		user.LastLogin = time.Now()
 		user.Password, _ = hashPassword(user.Password)
 
-		if created := models.AddRecordToAccounts(Db, user); created {
+		if created := config.AddRecordToAccounts(Db, user); created {
 			w.WriteHeader(http.StatusCreated)
 			fmt.Fprint(w, `{"Message" : "Successfully Created"}`)
 		} else {
@@ -104,7 +104,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		user, err := models.GetUserLogin(Db, loginDet.Username)
+		user, err := config.GetUserLogin(Db, loginDet.Username)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -161,7 +161,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case http.MethodGet:
 
-		user, _ := models.GetUser(Db, fmt.Sprint(username))
+		user, _ := config.GetUser(Db, fmt.Sprint(username))
 		b := loginResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -180,7 +180,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, string(jsonResp))
 
 	case http.MethodPut:
-		var user models.Accounts
+		var user config.Accounts
 
 		_ = json.NewDecoder(req.Body).Decode(&user)
 		if user.Fullname == "" && user.Gender == "" {
@@ -190,7 +190,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		}
 
 		user.Username = fmt.Sprint(username)
-		err := models.EditUser(Db, &user)
+		err := config.EditUser(Db, &user)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Something went Wrong"}`)

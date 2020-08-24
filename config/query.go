@@ -1,4 +1,4 @@
-package models
+package config
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func CreateAccountTable(db *sql.DB) {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 }
 
@@ -45,7 +45,7 @@ func DropTable(db *sql.DB) {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
 	fmt.Println("\n\n Table dropped successfully")
@@ -66,7 +66,7 @@ func AddRecordToAccounts(db *sql.DB, user Accounts) bool {
 	_, err := db.Exec(query, user.Username, user.Email, user.Password,
 		user.CreatedOn, user.LastLogin)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	return true
 }
@@ -82,7 +82,8 @@ func checkUser(db *sql.DB, user Accounts) bool {
 	case nil:
 		return true
 	default:
-		panic(err)
+		fmt.Println(err)
+		return false
 	}
 }
 
@@ -115,7 +116,8 @@ func GetUser(db *sql.DB, username string) (Accounts, error) {
 		}
 		return user, nil
 	default:
-		panic(err)
+		fmt.Println(err)
+		return Accounts{}, err
 	}
 }
 
@@ -168,7 +170,8 @@ func GetUserLogin(db *sql.DB, username string) (Accounts, error) {
 		}
 		return user, nil
 	default:
-		panic(err)
+		fmt.Println(err)
+		return Accounts{}, err
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Uchencho/wallet/models"
+	"github.com/Uchencho/wallet/config"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,7 +28,7 @@ var (
 	refreshSigningKey = []byte("b178604f6216f904f394641fd167078e426d5fe9ce20d4c07a65e8dd051a40d9")
 )
 
-func generateAuthTokens(user models.Accounts) (string, string, error) {
+func generateAuthTokens(user config.Accounts) (string, string, error) {
 
 	// Access token
 	token := jwt.New(jwt.SigningMethodHS256)

@@ -5,14 +5,14 @@ import (
 	"net/http"
 
 	"github.com/Uchencho/wallet/app"
-	"github.com/Uchencho/wallet/models"
+	"github.com/Uchencho/wallet/config"
 )
 
 func main() {
 
 	defer app.Db.Close()
 
-	models.CreateAccountTable(app.Db)
+	config.CreateAccountTable(app.Db)
 
 	http.HandleFunc("/healthcheck", app.HealthCheck)
 	http.HandleFunc("/register", app.RegisterUser)
