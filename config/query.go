@@ -22,7 +22,7 @@ type Accounts struct {
 
 type GeneratePayment struct {
 	Email  string `json:"email"`
-	Amount string `json:"amount"`
+	Amount int    `json:"amount"`
 }
 
 type PaystackResponse struct {
@@ -234,7 +234,8 @@ func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
 		$1, $2, $3, $4, $5, $6, $7, $8 
 	) RETURNING id`
 
-	_, err := db.Exec(query, p.Email, p.Amount, false, res.Data.AccessCode,
+	amountNaira := p.Amount / 100
+	_, err := db.Exec(query, p.Email, amountNaira, false, res.Data.AccessCode,
 		res.Data.AuthorizationURL, res.Data.Reference, time.Now(), false)
 
 	if err != nil {

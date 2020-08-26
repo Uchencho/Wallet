@@ -141,7 +141,7 @@ func GetServerAddress() string {
 	return defaultServerAddress
 }
 
-func hitPaystack(email, amount string) (r config.PaystackResponse, err error) {
+func hitPaystack(email string, amount int) (r config.PaystackResponse, err error) {
 	p := config.GeneratePayment{
 		Email:  email,
 		Amount: amount,
