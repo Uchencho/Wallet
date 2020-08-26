@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -145,7 +146,7 @@ func GetServerAddress() string {
 	return defaultServerAddress
 }
 
-func hitPaystack(email, amount string) {
+func hitPaystack(email, amount string) bool {
 	p := generatePayment{
 		Email:  email,
 		Amount: amount,
@@ -158,6 +159,21 @@ func hitPaystack(email, amount string) {
 	if err != nil {
 		log.Println(err)
 	}
+	value := "Bearer " + config.Paystack_key
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Authorization", "")
+	req.Header.Add("Authorization", value)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Error making a request to Paystack ", err)
+		return false
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error making a request to Paystack")
+	}
+	fmt.Println(string(body))
+	return true
 }
