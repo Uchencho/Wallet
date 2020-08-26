@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -16,10 +17,14 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case http.MethodPost:
-		if hitPaystack("alozyuche@gmail.com", "2000000") {
-			fmt.Fprint(w, `{"Message" : "Hit successful"}`)
-
+		result, err := hitPaystack("alozyuche@gmail.com", "200000")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Something went wrong"}`)
 		}
+		jsonresp, _ := json.Marshal(result)
+		fmt.Fprint(w, string(jsonresp))
+
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)

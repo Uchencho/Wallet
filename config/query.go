@@ -184,3 +184,27 @@ func EditUser(db *sql.DB, user *Accounts) error {
 	}
 	return nil
 }
+
+func CreateTransactionTable(db *sql.DB) {
+
+	query := `CREATE TABLE IF NOT EXISTS transactions (
+		id serial PRIMARY KEY,
+		email VARCHAR ( 50 ) UNIQUE NOT NULL,
+		amount INT NOT NULL,
+		payment_status BOOL,
+		access_code VARCHAR ( 200 ),
+		authorization_url VARCHAR ( 200 ),
+		reference VARCHAR ( 200 ),
+		payment_channel VARCHAR ( 200 ),
+		transaction_date TIMESTAMP,
+		verify_status BOOL,
+		FOREIGN KEY(email)
+			REFERENCES accounts(email)
+			ON DELETE CASCADE
+		);`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		fmt.Println(err)
+	}
+}

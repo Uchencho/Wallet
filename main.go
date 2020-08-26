@@ -13,6 +13,7 @@ func main() {
 	defer app.Db.Close()
 
 	config.CreateAccountTable(app.Db)
+	config.CreateTransactionTable(app.Db)
 
 	http.HandleFunc("/healthcheck", app.HealthCheck)
 	http.HandleFunc("/register", app.RegisterUser)

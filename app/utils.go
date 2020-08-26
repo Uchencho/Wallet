@@ -22,6 +22,16 @@ type generatePayment struct {
 	Amount string `json:"amount"`
 }
 
+type PaystackResponse struct {
+	Status  bool   `json:"status"`
+	Message string `json:"message"`
+	Data    struct {
+		AuthorizationURL string `json:"authorization_url"`
+		AccessCode       string `json:"access_code"`
+		Reference        string `json:"reference"`
+	} `json:"data"`
+}
+
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 4)
 	return string(bytes), err
@@ -146,7 +156,7 @@ func GetServerAddress() string {
 	return defaultServerAddress
 }
 
-func hitPaystack(email, amount string) bool {
+func hitPaystack(email, amount string) (r PaystackResponse, err error) {
 	p := generatePayment{
 		Email:  email,
 		Amount: amount,
@@ -167,13 +177,17 @@ func hitPaystack(email, amount string) bool {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Error making a request to Paystack ", err)
-		return false
+		return PaystackResponse{}, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error making a request to Paystack")
 	}
-	fmt.Println(string(body))
-	return true
+
+	err = json.Unmarshal(body, &r)
+	if err != nil {
+		log.Println("Error making a request to Paystack")
+	}
+	return r, nil
 }
