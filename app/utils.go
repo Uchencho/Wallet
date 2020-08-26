@@ -17,21 +17,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type generatePayment struct {
-	Email  string `json:"email"`
-	Amount string `json:"amount"`
-}
-
-type PaystackResponse struct {
-	Status  bool   `json:"status"`
-	Message string `json:"message"`
-	Data    struct {
-		AuthorizationURL string `json:"authorization_url"`
-		AccessCode       string `json:"access_code"`
-		Reference        string `json:"reference"`
-	} `json:"data"`
-}
-
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 4)
 	return string(bytes), err
@@ -156,8 +141,8 @@ func GetServerAddress() string {
 	return defaultServerAddress
 }
 
-func hitPaystack(email, amount string) (r PaystackResponse, err error) {
-	p := generatePayment{
+func hitPaystack(email, amount string) (r config.PaystackResponse, err error) {
+	p := config.GeneratePayment{
 		Email:  email,
 		Amount: amount,
 	}
@@ -177,7 +162,7 @@ func hitPaystack(email, amount string) (r PaystackResponse, err error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Error making a request to Paystack ", err)
-		return PaystackResponse{}, err
+		return config.PaystackResponse{}, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)

@@ -3,7 +3,11 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"sync"
+
+	"github.com/Uchencho/wallet/config"
 )
 
 func FundAccount(w http.ResponseWriter, req *http.Request) {
@@ -17,13 +21,37 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case http.MethodPost:
-		result, err := hitPaystack("alozyuche@gmail.com", "200000")
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		// Get email and amount from post request, make sure amount is string
+		var pl config.GeneratePayment
+		_ = json.NewDecoder(req.Body).Decode(&pl)
+		if pl.Amount == "" || pl.Email == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Email and amount is needed"}`)
+			return
+		}
+		// Hit paystack to return link
+		result, err := hitPaystack(pl.Email, pl.Amount)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Something went wrong"}`)
 		}
-		jsonresp, _ := json.Marshal(result)
+
+		// Send details to db
+		go func() {
+			if !config.AddTransaction(Db, pl, result) {
+				log.Println("Could not add transaction to databse")
+			}
+			wg.Done()
+		}()
+
+		// Send the link to the user
+		jsonresp, _ := json.Marshal(result.Data)
 		fmt.Fprint(w, string(jsonresp))
+		wg.Wait()
+		return
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)

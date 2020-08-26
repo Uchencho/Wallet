@@ -19,6 +19,21 @@ type Accounts struct {
 	LastLogin time.Time `json:"last_login"`
 }
 
+type GeneratePayment struct {
+	Email  string `json:"email"`
+	Amount string `json:"amount"`
+}
+
+type PaystackResponse struct {
+	Status  bool   `json:"status"`
+	Message string `json:"message"`
+	Data    struct {
+		AuthorizationURL string `json:"authorization_url"`
+		AccessCode       string `json:"access_code"`
+		Reference        string `json:"reference"`
+	} `json:"data"`
+}
+
 func CreateAccountTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS accounts (
@@ -207,4 +222,23 @@ func CreateTransactionTable(db *sql.DB) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
+
+	query := `INSERT INTO transactions (
+		email, amount, payment_status, access_code, authorization_url, 
+		reference, transaction_date, verify_status
+	) VALUES ( 
+		$1, $2, $3, $4, $5, $6, $7, $8 
+	) RETURNING id`
+
+	_, err := db.Exec(query, p.Email, p.Amount, false, res.Data.AccessCode,
+		res.Data.AuthorizationURL, res.Data.Reference, time.Now(), false)
+
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	return true
 }
