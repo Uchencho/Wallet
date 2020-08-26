@@ -1,8 +1,11 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -12,6 +15,11 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type generatePayment struct {
+	Email  string `json:"email"`
+	Amount string `json:"amount"`
+}
 
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 4)
@@ -135,4 +143,21 @@ func GetServerAddress() string {
 		return serverAddress
 	}
 	return defaultServerAddress
+}
+
+func hitPaystack(email, amount string) {
+	p := generatePayment{
+		Email:  email,
+		Amount: amount,
+	}
+
+	const paylink = "https://api.paystack.co/transaction/initialize"
+
+	reqBody, _ := json.Marshal(p)
+	req, err := http.NewRequest("POST", paylink, bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Println(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Add("Authorization", "")
 }
