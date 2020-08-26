@@ -13,7 +13,7 @@ import (
 func FundAccount(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, _, err := checkAuth(req)
+	authorized, email, err := checkAuth(req)
 	if !authorized {
 		unAuthorizedResponse(w, err)
 		return
@@ -27,11 +27,13 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 		// Get email and amount from post request, make sure amount is string
 		var pl config.GeneratePayment
 		_ = json.NewDecoder(req.Body).Decode(&pl)
-		if pl.Amount == "" || pl.Email == "" {
+		if pl.Amount == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprint(w, `{"Message" : "Email and amount is needed"}`)
+			fmt.Fprint(w, `{"Message" : "Amount is needed"}`)
 			return
 		}
+		pl.Email = fmt.Sprint(email)
+		fmt.Println(pl.Email)
 		// Hit paystack to return link
 		result, err := hitPaystack(pl.Email, pl.Amount)
 		if err != nil {

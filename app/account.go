@@ -152,7 +152,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 func UserProfile(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, username, err := checkAuth(req)
+	authorized, email, err := checkAuth(req)
 	if !authorized {
 		unAuthorizedResponse(w, err)
 		return
@@ -161,7 +161,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case http.MethodGet:
 
-		user, _ := config.GetUser(Db, fmt.Sprint(username))
+		user, _ := config.GetUser(Db, fmt.Sprint(email))
 		b := loginResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -189,7 +189,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		user.Username = fmt.Sprint(username)
+		user.Email = fmt.Sprint(email)
 		err := config.EditUser(Db, &user)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -215,8 +215,8 @@ func RefreshToken(w http.ResponseWriter, req *http.Request) {
 			unAuthorizedResponse(w, errors.New(`{"Message" : "Credentials Not Sent"}`))
 			return
 		}
-		if authorized, username, _ := checkRefreshToken(token.Value); authorized {
-			accessString, err := newAccessToken(fmt.Sprint(username))
+		if authorized, email, _ := checkRefreshToken(token.Value); authorized {
+			accessString, err := newAccessToken(fmt.Sprint(email))
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprint(w, `{"Message" : "Could not generate accesstoken"}`)

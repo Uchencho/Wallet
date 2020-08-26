@@ -39,7 +39,7 @@ func generateAuthTokens(user config.Accounts) (string, string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 
 	claims["authorized"] = true
-	claims["client"] = user.Username
+	claims["client"] = user.Email
 	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	accessString, err := token.SignedString(signingKey)
@@ -53,7 +53,7 @@ func generateAuthTokens(user config.Accounts) (string, string, error) {
 	refreshClaims := refreshToken.Claims.(jwt.MapClaims)
 
 	refreshClaims["authorized"] = true
-	refreshClaims["client"] = user.Username
+	refreshClaims["client"] = user.Email
 	refreshClaims["exp"] = time.Now().Add(time.Hour * 6).Unix()
 
 	refreshString, err := refreshToken.SignedString(refreshSigningKey)
@@ -115,12 +115,12 @@ func checkRefreshToken(refreshToken string) (bool, interface{}, error) {
 	return false, "", errors.New("Credentials not provided")
 }
 
-func newAccessToken(username string) (string, error) {
+func newAccessToken(email string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
 	claims["authorized"] = true
-	claims["client"] = username
+	claims["client"] = email
 	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	accessString, err := token.SignedString(signingKey)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -102,9 +103,9 @@ func checkUser(db *sql.DB, user Accounts) bool {
 	}
 }
 
-func GetUser(db *sql.DB, username string) (Accounts, error) {
+func GetUser(db *sql.DB, email string) (Accounts, error) {
 	query := `SELECT id, username, email, password, fullname, gender, last_login, created_on
-			  FROM accounts WHERE username = $1;`
+			  FROM accounts WHERE email = $1;`
 
 	var (
 		user Accounts
@@ -112,7 +113,7 @@ func GetUser(db *sql.DB, username string) (Accounts, error) {
 		f    interface{}
 	)
 
-	row := db.QueryRow(query, username)
+	row := db.QueryRow(query, email)
 	switch err := row.Scan(&user.ID, &user.Username, &user.Email,
 		&user.Password, &f, &g, &user.LastLogin, &user.CreatedOn); err {
 	case sql.ErrNoRows:
@@ -191,9 +192,9 @@ func GetUserLogin(db *sql.DB, username string) (Accounts, error) {
 }
 
 func EditUser(db *sql.DB, user *Accounts) error {
-	query := `UPDATE accounts SET fullname = $1, gender = $2 WHERE username = $3`
+	query := `UPDATE accounts SET fullname = $1, gender = $2 WHERE email = $3`
 
-	_, err := db.Exec(query, user.Fullname, user.Gender, user.Username)
+	_, err := db.Exec(query, user.Fullname, user.Gender, user.Email)
 	if err != nil {
 		return err
 	}
@@ -204,7 +205,7 @@ func CreateTransactionTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS transactions (
 		id serial PRIMARY KEY,
-		email VARCHAR ( 50 ) UNIQUE NOT NULL,
+		email VARCHAR ( 50 ) NOT NULL,
 		amount INT NOT NULL,
 		payment_status BOOL,
 		access_code VARCHAR ( 200 ),
@@ -237,7 +238,7 @@ func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
 		res.Data.AuthorizationURL, res.Data.Reference, time.Now(), false)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return false
 	}
 	return true
