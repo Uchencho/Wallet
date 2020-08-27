@@ -89,9 +89,9 @@ func checkAuth(r *http.Request) (bool, interface{}, error) {
 }
 
 func unAuthorizedResponse(w http.ResponseWriter, err error) {
-	cookie := http.Cookie{Name: "Refreshtoken", Value: "", Path: "/",
-		MaxAge: -1, HttpOnly: true}
-	http.SetCookie(w, &cookie)
+	// cookie := http.Cookie{Name: "Refreshtoken", Value: "", Path: "/",
+	// 	MaxAge: -1, HttpOnly: true}
+	// http.SetCookie(w, &cookie)
 	w.WriteHeader(http.StatusForbidden)
 	fmt.Fprint(w, err.Error())
 }

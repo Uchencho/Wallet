@@ -247,8 +247,7 @@ func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
 		$1, $2, $3, $4, $5, $6, $7, $8 
 	) RETURNING id`
 
-	amountNaira := p.Amount / 100
-	_, err := db.Exec(query, p.Email, amountNaira, false, res.Data.AccessCode,
+	_, err := db.Exec(query, p.Email, p.Amount, false, res.Data.AccessCode,
 		res.Data.AuthorizationURL, res.Data.Reference, time.Now(), false)
 
 	if err != nil {
@@ -278,7 +277,7 @@ func CreateBalanceTable(db *sql.DB) {
 
 func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 
-	query := `SELECT email, amount, payment_status,
+	query := `SELECT id, email, amount, payment_status,
 			transaction_date, verify_status
 			FROM transactions WHERE email = $1;`
 
@@ -292,7 +291,7 @@ func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 	var temp Transactions
 
 	for row.Next() {
-		err := row.Scan(&temp.Email, &temp.Amount, &temp.Payment_status,
+		err := row.Scan(&temp.ID, &temp.Email, &temp.Amount, &temp.Payment_status,
 			&temp.Transaction_date, &temp.Verify_status)
 		if err != nil {
 			log.Println(err)

@@ -34,7 +34,7 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 		}
 		pl.Email = fmt.Sprint(email)
 		// Hit paystack to return link
-		result, err := hitPaystack(pl.Email, pl.Amount)
+		result, err := hitPaystack(pl.Email, pl.Amount*100)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Something went wrong"}`)
@@ -71,8 +71,11 @@ func TransactionHistory(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case http.MethodGet:
-		// Give me all transactions for this user
 		transactions := config.GetTransactions(Db, fmt.Sprint(email))
+		if transactions == nil {
+			fmt.Fprint(w, `[]`)
+			return
+		}
 		jsonresp, _ := json.Marshal(transactions)
 		fmt.Fprint(w, string(jsonresp))
 		return
