@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -78,9 +79,14 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 		if created := config.AddRecordToAccounts(Db, user); created {
 			w.WriteHeader(http.StatusCreated)
 			fmt.Fprint(w, `{"Message" : "Successfully Created"}`)
+			if !config.InitializeBalance(Db, user.Email) {
+				log.Println("Could not initialize balance for user", user.Email)
+				return
+			}
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "User already exists, please login"}`)
+			return
 		}
 
 	default:

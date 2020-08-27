@@ -14,6 +14,7 @@ func main() {
 
 	config.CreateAccountTable(app.Db)
 	config.CreateTransactionTable(app.Db)
+	config.CreateBalanceTable(app.Db)
 
 	http.HandleFunc("/healthcheck", app.HealthCheck)
 	http.HandleFunc("/register", app.RegisterUser)

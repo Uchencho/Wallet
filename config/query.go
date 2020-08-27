@@ -307,3 +307,19 @@ func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 	}
 	return tnx
 }
+
+func InitializeBalance(db *sql.DB, email string) bool {
+
+	query := `INSERT INTO balance (
+		email, current_balance, last_update
+	) VALUES (
+		$1, $2, $3
+	) RETURNING id`
+
+	_, err := db.Exec(query, email, 0, time.Now())
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	return true
+}
