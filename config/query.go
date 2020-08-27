@@ -20,6 +20,19 @@ type Accounts struct {
 	LastLogin time.Time `json:"last_login"`
 }
 
+type Transactions struct {
+	ID                uint      `json:"id"`
+	Email             string    `json:"email"`
+	Amount            int       `json:"amount"`
+	Payment_status    bool      `json:"payment_status"`
+	Access_code       string    `json:"access_code"`
+	Authorization_url string    `json:"authorization_url"`
+	Reference         string    `json:"reference"`
+	Payment_channel   string    `json:"payment_channel"`
+	Transaction_date  time.Time `json:"transaction_date"`
+	Verify_status     bool      `json:"verify_status"`
+}
+
 type GeneratePayment struct {
 	Email  string `json:"email"`
 	Amount int    `json:"amount"`
@@ -221,7 +234,7 @@ func CreateTransactionTable(db *sql.DB) {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
 
@@ -243,4 +256,55 @@ func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
 		return false
 	}
 	return true
+}
+
+func CreateBalanceTable(db *sql.DB) {
+
+	query := `CREATE TABLE IF NOT EXISTS balance (
+		id serial PRIMARY KEY,
+		email VARCHAR ( 50 ) NOT NULL,
+		current_balance INT NOT NULL,
+		last_update TIMESTAMP,
+		FOREIGN KEY(email)
+			REFERENCES accounts(email)
+			ON DELETE CASCADE
+	);`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
+
+	query := `SELECT email, amount, payment_status,
+			transaction_date, verify_status
+			FROM transactions WHERE email = $1;`
+
+	row, err := db.Query(query, email)
+	if err != nil {
+		log.Println(err)
+		return []Transactions{}
+	}
+	defer row.Close()
+
+	var temp Transactions
+
+	for row.Next() {
+		err := row.Scan(&temp.Email, &temp.Amount, &temp.Payment_status,
+			&temp.Transaction_date, &temp.Verify_status)
+		if err != nil {
+			log.Println(err)
+			return []Transactions{}
+		}
+		tnx = append(tnx, temp)
+	}
+
+	err = row.Err()
+	if err != nil {
+		log.Println(err)
+		return []Transactions{}
+	}
+	return tnx
 }

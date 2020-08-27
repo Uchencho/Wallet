@@ -22,6 +22,7 @@ func main() {
 	http.HandleFunc("/refresh", app.RefreshToken)
 	http.HandleFunc("/logout", app.Logout)
 	http.HandleFunc("/fund", app.FundAccount)
+	http.HandleFunc("/transactions", app.TransactionHistory)
 	if err := http.ListenAndServe(app.GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}

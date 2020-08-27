@@ -59,3 +59,25 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
 }
+
+func TransactionHistory(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authorized, email, err := checkAuth(req)
+	if !authorized {
+		unAuthorizedResponse(w, err)
+		return
+	}
+
+	switch req.Method {
+	case http.MethodGet:
+		// Give me all transactions for this user
+		transactions := config.GetTransactions(Db, fmt.Sprint(email))
+		jsonresp, _ := json.Marshal(transactions)
+		fmt.Fprint(w, string(jsonresp))
+		return
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+	}
+}
