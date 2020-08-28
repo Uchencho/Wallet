@@ -389,7 +389,7 @@ func sendMoney(db *sql.DB, r recipient, email string) (bool, bool) {
 		return false, false
 	}
 
-	// Debit the account
+	// Debit the account (sender)
 	query = `UPDATE balance SET 
 				current_balance = current_balance - $1,
 				last_update = $2
@@ -401,12 +401,108 @@ func sendMoney(db *sql.DB, r recipient, email string) (bool, bool) {
 		return false, false
 	}
 
-	// Credit the account
+	// Credit the account (recipient)
 	query = `UPDATE balance SET 
 				current_balance = current_balance + $1,
 				last_update = $2
 			WHERE email = $3;`
 	_, err = dbTx.ExecContext(ctx, query, r.Amount, time.Now(), r.Email)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Add a transaction record (sender)
+	query = `INSERT INTO transactions (
+		email, amount, payment_status, access_code, authorization_url, 
+		reference, payment_channel, transaction_date, verify_status
+	) VALUES ( 
+		$1, $2, $3, $4, $5, $6, $7, $8, $9
+	) RETURNING id`
+
+	_, err = dbTx.ExecContext(ctx, query, email, -r.Amount, true, "wallet",
+		"wallet", "wallet", "walletPay", time.Now(), true)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Add a transaction record (recepient)
+	query = `INSERT INTO transactions (
+		email, amount, payment_status, access_code, authorization_url, 
+		reference, payment_channel, transaction_date, verify_status
+	) VALUES ( 
+		$1, $2, $3, $4, $5, $6, $7, $8, $9
+	) RETURNING id`
+
+	_, err = dbTx.ExecContext(ctx, query, r.Email, r.Amount, true, "wallet",
+		"wallet", "wallet", "walletPay", time.Now(), true)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Commit the transactions
+	err = dbTx.Commit()
+	if err != nil {
+		log.Println(err)
+		return false, false
+	}
+
+	return true, false
+}
+
+func deductBalance(db *sql.DB, amount int, email string) (bool, bool) {
+
+	ctx := context.Background()
+	dbTx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Println(err)
+		return false, false
+	}
+
+	// Check sender's current balance
+	var senderBal int
+	query := `SELECT current_balance FROM balance WHERE email = $1;`
+	row := dbTx.QueryRowContext(ctx, query, email)
+	switch err := row.Scan(&senderBal); err {
+	case sql.ErrNoRows:
+		log.Println("User does not have a balance, very big issue ", err)
+		_ = dbTx.Rollback()
+		return false, false
+	case nil:
+		if senderBal < amount {
+			return false, true
+		}
+	default:
+		log.Println(err)
+	}
+
+	// Deduct the user's wallet
+	query = `UPDATE balance SET
+				current_balance = current_balance - $1,
+				last_update = $2
+				WHERE email = $3;`
+	_, err = dbTx.ExecContext(ctx, query, amount, time.Now(), email)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Add a transaction record
+	query = `INSERT INTO transactions (
+		email, amount, payment_status, access_code, authorization_url, 
+		reference, payment_channel, transaction_date, verify_status
+	) VALUES ( 
+		$1, $2, $3, $4, $5, $6, $7, $8, $9
+	) RETURNING id`
+
+	_, err = dbTx.ExecContext(ctx, query, email, -amount, true, "wallet",
+		"payment", "payment", "walletPay", time.Now(), true)
 	if err != nil {
 		log.Println(err)
 		_ = dbTx.Rollback()

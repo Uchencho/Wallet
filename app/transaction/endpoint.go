@@ -58,6 +58,7 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 }
 
@@ -83,6 +84,7 @@ func TransactionHistory(w http.ResponseWriter, req *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 }
 
@@ -140,6 +142,7 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 }
 
@@ -170,6 +173,7 @@ func GetBalance(w http.ResponseWriter, req *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 }
 
@@ -213,5 +217,50 @@ func TransferFunds(w http.ResponseWriter, req *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
+	}
+}
+
+func PayForItem(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authorized, email, err := auth.CheckAuth(req)
+	if !authorized {
+		auth.UnAuthorizedResponse(w, err)
+		return
+	}
+
+	switch req.Method {
+	case http.MethodPost:
+
+		var amt GeneratePayment
+		_ = json.NewDecoder(req.Body).Decode(&amt)
+
+		if amt.Amount <= 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Amount/Email necessary with positive value"}`)
+			return
+		}
+
+		debited, insufficientBal := deductBalance(config.Db, amt.Amount, fmt.Sprint(email))
+		if insufficientBal {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Insufficient Balance"}`)
+			return
+		}
+		if debited {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, `{"Message" : "Paid successfully"}`)
+			return
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"Message" : "Something went wrong"}`)
+			return
+		}
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 }
