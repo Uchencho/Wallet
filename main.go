@@ -31,6 +31,7 @@ func main() {
 	http.HandleFunc("/transactions", transaction.TransactionHistory)
 	http.HandleFunc("/verify", transaction.VerifyTransaction)
 	http.HandleFunc("/current_balance", transaction.GetBalance)
+	http.HandleFunc("/transfer", transaction.TransferFunds)
 	if err := http.ListenAndServe(utils.GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}

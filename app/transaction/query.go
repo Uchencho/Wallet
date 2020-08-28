@@ -102,6 +102,11 @@ type UserBalance struct {
 	Last_update     time.Time `json:"last_update"`
 }
 
+type recipient struct {
+	Email  string `json:"email"`
+	Amount int    `json:"amount"`
+}
+
 func HitPaystack(email string, amount int) (r PaystackResponse, err error) {
 	p := GeneratePayment{
 		Email:  email,
@@ -347,4 +352,73 @@ func GetCurrentBalance(db *sql.DB, email string) (bal UserBalance, err error) {
 		return UserBalance{}, err
 	}
 
+}
+
+func sendMoney(db *sql.DB, r recipient, email string) (bool, bool) {
+
+	ctx := context.Background()
+	dbTx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Println(err)
+		return false, false
+	}
+
+	// Check sender's current balance
+	var senderBal int
+	query := `SELECT current_balance FROM balance WHERE email = $1;`
+	row := dbTx.QueryRowContext(ctx, query, email)
+	switch err := row.Scan(&senderBal); err {
+	case sql.ErrNoRows:
+		log.Println("User does not have a balance, very big issue ", err)
+		_ = dbTx.Rollback()
+		return false, false
+	case nil:
+		if senderBal < r.Amount {
+			return false, true
+		}
+	default:
+		log.Println(err)
+	}
+
+	// Check if recipient has a balance record
+	row = dbTx.QueryRowContext(ctx, query, r.Email)
+	switch err := row.Scan(&senderBal); err {
+	case sql.ErrNoRows:
+		log.Println("Recipient does not have a balance, very big issue ", err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Debit the account
+	query = `UPDATE balance SET 
+				current_balance = current_balance - $1,
+				last_update = $2
+			WHERE email = $3;`
+	_, err = dbTx.ExecContext(ctx, query, r.Amount, time.Now(), email)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Credit the account
+	query = `UPDATE balance SET 
+				current_balance = current_balance + $1,
+				last_update = $2
+			WHERE email = $3;`
+	_, err = dbTx.ExecContext(ctx, query, r.Amount, time.Now(), r.Email)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+
+	// Commit the transactions
+	err = dbTx.Commit()
+	if err != nil {
+		log.Println(err)
+		return false, false
+	}
+
+	return true, false
 }

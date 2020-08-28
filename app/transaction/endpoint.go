@@ -172,3 +172,46 @@ func GetBalance(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
 }
+
+func TransferFunds(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authorized, email, err := auth.CheckAuth(req)
+	if !authorized {
+		auth.UnAuthorizedResponse(w, err)
+		return
+	}
+
+	switch req.Method {
+	case http.MethodPost:
+		var pl recipient
+		_ = json.NewDecoder(req.Body).Decode(&pl)
+
+		if pl.Amount == 0 || pl.Email == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Amount/Email necessary"}`)
+			return
+		}
+
+		sent, insufficientBal := sendMoney(config.Db, pl, fmt.Sprint(email))
+		if insufficientBal {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Insufficient Balance"}`)
+			return
+		}
+
+		if sent {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, `{"Message" : "Funds has been sent"}`)
+			return
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "User does not exist"}`)
+			return
+		}
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+	}
+}
