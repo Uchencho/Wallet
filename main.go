@@ -24,6 +24,7 @@ func main() {
 	http.HandleFunc("/logout", app.Logout)
 	http.HandleFunc("/fund", app.FundAccount)
 	http.HandleFunc("/transactions", app.TransactionHistory)
+	http.HandleFunc("/verify", app.VerifyTransaction)
 	if err := http.ListenAndServe(app.GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}

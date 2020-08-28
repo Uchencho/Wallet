@@ -278,7 +278,7 @@ func CreateBalanceTable(db *sql.DB) {
 func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 
 	query := `SELECT id, email, amount, payment_status,
-			transaction_date, verify_status
+			transaction_date, reference, authorization_url, verify_status
 			FROM transactions WHERE email = $1;`
 
 	row, err := db.Query(query, email)
@@ -292,7 +292,7 @@ func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 
 	for row.Next() {
 		err := row.Scan(&temp.ID, &temp.Email, &temp.Amount, &temp.Payment_status,
-			&temp.Transaction_date, &temp.Verify_status)
+			&temp.Transaction_date, &temp.Reference, &temp.Authorization_url, &temp.Verify_status)
 		if err != nil {
 			log.Println(err)
 			return []Transactions{}

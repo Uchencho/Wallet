@@ -84,3 +84,42 @@ func TransactionHistory(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
 }
+
+func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authorized, _, err := checkAuth(req)
+	if !authorized {
+		unAuthorizedResponse(w, err)
+		return
+	}
+
+	switch req.Method {
+	case http.MethodPost:
+		var tranx config.Transactions
+
+		_ = json.NewDecoder(req.Body).Decode(&tranx)
+		if tranx.Reference == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Incomplete Payload"}`)
+			return
+		}
+
+		if tranx.Verify_status {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"Message" : "Transaction has already been verified"}`)
+			return
+		}
+
+		result := paystackVerify(tranx.Reference)
+		jsonresp, _ := json.Marshal(result)
+
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(jsonresp))
+		return
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+	}
+}

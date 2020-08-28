@@ -17,6 +17,62 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type verifyPaystackResponse struct {
+	Status  bool   `json:"status"`
+	Message string `json:"message"`
+	Data    struct {
+		Amount          int         `json:"amount"`
+		Currency        string      `json:"currency"`
+		TransactionDate time.Time   `json:"transaction_date"`
+		Status          string      `json:"status"`
+		Reference       string      `json:"reference"`
+		Domain          string      `json:"domain"`
+		Metadata        string      `json:"metadata"`
+		GatewayResponse string      `json:"gateway_response"`
+		Message         interface{} `json:"message"`
+		Channel         string      `json:"channel"`
+		IPAddress       string      `json:"ip_address"`
+		Log             struct {
+			TimeSpent      int           `json:"time_spent"`
+			Attempts       int           `json:"attempts"`
+			Authentication interface{}   `json:"authentication"`
+			Errors         int           `json:"errors"`
+			Success        bool          `json:"success"`
+			Mobile         bool          `json:"mobile"`
+			Input          []interface{} `json:"input"`
+			Channel        interface{}   `json:"channel"`
+			History        []struct {
+				Type    string `json:"type"`
+				Message string `json:"message"`
+				Time    int    `json:"time"`
+			} `json:"history"`
+		} `json:"log"`
+		Fees          interface{} `json:"fees"`
+		Authorization struct {
+			AuthorizationCode string `json:"authorization_code"`
+			CardType          string `json:"card_type"`
+			Last4             string `json:"last4"`
+			ExpMonth          string `json:"exp_month"`
+			ExpYear           string `json:"exp_year"`
+			Bin               string `json:"bin"`
+			Bank              string `json:"bank"`
+			Channel           string `json:"channel"`
+			Signature         string `json:"signature"`
+			Reusable          bool   `json:"reusable"`
+			CountryCode       string `json:"country_code"`
+		} `json:"authorization"`
+		Customer struct {
+			ID           int    `json:"id"`
+			CustomerCode string `json:"customer_code"`
+			FirstName    string `json:"first_name"`
+			LastName     string `json:"last_name"`
+			Email        string `json:"email"`
+		} `json:"customer"`
+		Plan            string `json:"plan"`
+		RequestedAmount int    `json:"requested_amount"`
+	} `json:"data"`
+}
+
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 4)
 	return string(bytes), err
@@ -175,4 +231,45 @@ func hitPaystack(email string, amount int) (r config.PaystackResponse, err error
 		log.Println("Error making a request to Paystack")
 	}
 	return r, nil
+}
+
+func paystackVerify(reference string) (res config.Transactions) {
+
+	var verifyLink = "https://api.paystack.co/transaction/verify/" + reference
+
+	req, err := http.NewRequest("GET", verifyLink, bytes.NewBuffer([]byte{}))
+	if err != nil {
+		log.Println(err)
+	}
+	value := "Bearer " + config.Paystack_key
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Add("Authorization", value)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Error making request to paystack, ", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error reading the body, ", err)
+		return
+	}
+
+	var verifyPayload verifyPaystackResponse
+	err = json.Unmarshal(body, &verifyPayload)
+	if err != nil {
+		log.Println("Error Unmarshalling json, ", err)
+		return
+	}
+
+	res.Payment_channel = verifyPayload.Data.Channel
+	if verifyPayload.Data.Status == "failed" || verifyPayload.Data.Status == "success" {
+		res.Verify_status = true
+		res.Payment_status = true
+	}
+	return res
 }
