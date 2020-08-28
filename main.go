@@ -10,13 +10,16 @@ import (
 	"github.com/Uchencho/wallet/config"
 )
 
-func main() {
-
-	defer config.Db.Close()
-
+func makemigrations() {
 	config.CreateAccountTable(config.Db)
 	config.CreateTransactionTable(config.Db)
 	config.CreateBalanceTable(config.Db)
+}
+
+func main() {
+
+	defer config.Db.Close()
+	makemigrations()
 
 	http.HandleFunc("/healthcheck", account.HealthCheck)
 	http.HandleFunc("/register", account.RegisterUser)
