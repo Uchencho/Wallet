@@ -1,28 +1,22 @@
-package app
+package auth
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/Uchencho/wallet/config"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func hashPassword(password string) (string, error) {
+func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 4)
 	return string(bytes), err
 }
 
-func checkPasswordHash(password, hash string) bool {
+func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
@@ -32,14 +26,14 @@ var (
 	refreshSigningKey = []byte("b178604f6216f904f394641fd167078e426d5fe9ce20d4c07a65e8dd051a40d9")
 )
 
-func generateAuthTokens(user config.Accounts) (string, string, error) {
+func GenerateAuthTokens(email string) (string, string, error) {
 
 	// Access token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
 	claims["authorized"] = true
-	claims["client"] = user.Email
+	claims["client"] = email
 	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	accessString, err := token.SignedString(signingKey)
@@ -53,7 +47,7 @@ func generateAuthTokens(user config.Accounts) (string, string, error) {
 	refreshClaims := refreshToken.Claims.(jwt.MapClaims)
 
 	refreshClaims["authorized"] = true
-	refreshClaims["client"] = user.Email
+	refreshClaims["client"] = email
 	refreshClaims["exp"] = time.Now().Add(time.Hour * 6).Unix()
 
 	refreshString, err := refreshToken.SignedString(refreshSigningKey)
@@ -65,7 +59,7 @@ func generateAuthTokens(user config.Accounts) (string, string, error) {
 	return accessString, refreshString, nil
 }
 
-func checkAuth(r *http.Request) (bool, interface{}, error) {
+func CheckAuth(r *http.Request) (bool, interface{}, error) {
 	if r.Header["Authorization"] != nil {
 		if len(strings.Split(r.Header["Authorization"][0], " ")) < 2 {
 			return false, "", errors.New("Invalid Credentials")
@@ -88,7 +82,7 @@ func checkAuth(r *http.Request) (bool, interface{}, error) {
 	return false, "", errors.New("Credentials not provided")
 }
 
-func unAuthorizedResponse(w http.ResponseWriter, err error) {
+func UnAuthorizedResponse(w http.ResponseWriter, err error) {
 	// cookie := http.Cookie{Name: "Refreshtoken", Value: "", Path: "/",
 	// 	MaxAge: -1, HttpOnly: true}
 	// http.SetCookie(w, &cookie)
@@ -96,7 +90,7 @@ func unAuthorizedResponse(w http.ResponseWriter, err error) {
 	fmt.Fprint(w, err.Error())
 }
 
-func checkRefreshToken(refreshToken string) (bool, interface{}, error) {
+func CheckRefreshToken(refreshToken string) (bool, interface{}, error) {
 
 	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -115,7 +109,7 @@ func checkRefreshToken(refreshToken string) (bool, interface{}, error) {
 	return false, "", errors.New("Credentials not provided")
 }
 
-func newAccessToken(email string) (string, error) {
+func NewAccessToken(email string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
@@ -130,49 +124,4 @@ func newAccessToken(email string) (string, error) {
 	}
 
 	return accessString, nil
-}
-
-func GetServerAddress() string {
-	const defaultServerAddress = "127.0.0.1:8000"
-	serverAddress, present := os.LookupEnv("SERVER_ADDRESS")
-	if present {
-		return serverAddress
-	}
-	return defaultServerAddress
-}
-
-func hitPaystack(email string, amount int) (r config.PaystackResponse, err error) {
-	p := config.GeneratePayment{
-		Email:  email,
-		Amount: amount,
-	}
-
-	const paylink = "https://api.paystack.co/transaction/initialize"
-
-	reqBody, _ := json.Marshal(p)
-	req, err := http.NewRequest("POST", paylink, bytes.NewBuffer(reqBody))
-	if err != nil {
-		log.Println(err)
-	}
-	value := "Bearer " + config.Paystack_key
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Authorization", value)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println("Error making a request to Paystack ", err)
-		return config.PaystackResponse{}, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println("Error making a request to Paystack")
-	}
-
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		log.Println("Error making a request to Paystack")
-	}
-	return r, nil
 }

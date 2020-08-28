@@ -35,3 +35,5 @@ func ConnectDatabase() *sql.DB {
 
 	return db
 }
+
+var Db = ConnectDatabase()
