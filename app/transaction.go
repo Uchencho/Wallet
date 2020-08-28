@@ -101,7 +101,7 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		_ = json.NewDecoder(req.Body).Decode(&tranx)
 		if tranx.Reference == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprint(w, `{"Message" : "Incomplete Payload"}`)
+			fmt.Fprint(w, `{"Message" : "Reference is Needed"}`)
 			return
 		}
 
@@ -166,5 +166,8 @@ func GetBalance(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, string(jsonResp))
 		return
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
 }

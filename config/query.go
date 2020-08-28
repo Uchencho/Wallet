@@ -358,6 +358,7 @@ func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
 	}
 
 	if tnx.Payment_status {
+		// Transaction was successful and it has not been verified before, update balance
 
 		increaseBalance := `UPDATE balance SET 
 							current_balance = current_balance + $1,
