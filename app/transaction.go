@@ -43,7 +43,7 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 		// Send details to db
 		go func() {
 			if !config.AddTransaction(Db, pl, result) {
-				log.Println("Could not add transaction to databse")
+				log.Println("Could not add transaction to database")
 			}
 			wg.Done()
 		}()
@@ -88,7 +88,7 @@ func TransactionHistory(w http.ResponseWriter, req *http.Request) {
 func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, _, err := checkAuth(req)
+	authorized, email, err := checkAuth(req)
 	if !authorized {
 		unAuthorizedResponse(w, err)
 		return
@@ -105,17 +105,29 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if tranx.Verify_status {
+		result, attempted := paystackVerify(tranx.Reference)
+		result.Email = fmt.Sprint(email)
+
+		if !attempted {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, `{"Message" : "Transaction was abandoned"}`)
+		}
+
+		// Write to db, update transaction table and balance table
+		_, alreadyverified := config.UpdateTransaction(Db, result, true) // Only credits
+		if alreadyverified {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Transaction has already been verified"}`)
 			return
 		}
 
-		result := paystackVerify(tranx.Reference)
-		jsonresp, _ := json.Marshal(result)
-
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, string(jsonresp))
+		switch {
+		case result.Payment_status:
+			fmt.Fprint(w, `{"Message" : "Transaction was successful and has been updated accordingly"}`)
+		default:
+			fmt.Fprint(w, `{"Message" : "Transaction failed"}`)
+		}
 		return
 
 	default:

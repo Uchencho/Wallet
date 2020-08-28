@@ -242,13 +242,13 @@ func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
 
 	query := `INSERT INTO transactions (
 		email, amount, payment_status, access_code, authorization_url, 
-		reference, transaction_date, verify_status
+		reference, payment_channel, transaction_date, verify_status
 	) VALUES ( 
-		$1, $2, $3, $4, $5, $6, $7, $8 
+		$1, $2, $3, $4, $5, $6, $7, $8, $9
 	) RETURNING id`
 
 	_, err := db.Exec(query, p.Email, p.Amount, false, res.Data.AccessCode,
-		res.Data.AuthorizationURL, res.Data.Reference, time.Now(), false)
+		res.Data.AuthorizationURL, res.Data.Reference, "", time.Now(), false)
 
 	if err != nil {
 		log.Println(err)
@@ -278,7 +278,7 @@ func CreateBalanceTable(db *sql.DB) {
 func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 
 	query := `SELECT id, email, amount, payment_status,
-			transaction_date, reference, authorization_url, verify_status
+			transaction_date, reference, payment_channel, authorization_url, verify_status
 			FROM transactions WHERE email = $1;`
 
 	row, err := db.Query(query, email)
@@ -292,7 +292,8 @@ func GetTransactions(db *sql.DB, email string) (tnx []Transactions) {
 
 	for row.Next() {
 		err := row.Scan(&temp.ID, &temp.Email, &temp.Amount, &temp.Payment_status,
-			&temp.Transaction_date, &temp.Reference, &temp.Authorization_url, &temp.Verify_status)
+			&temp.Transaction_date, &temp.Reference, &temp.Payment_channel,
+			&temp.Authorization_url, &temp.Verify_status)
 		if err != nil {
 			log.Println(err)
 			return []Transactions{}
@@ -322,4 +323,76 @@ func InitializeBalance(db *sql.DB, email string) bool {
 		return false
 	}
 	return true
+}
+
+// Returns status of query and if transaction has already been verified
+func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
+
+	ctx := context.Background()
+	dbTx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Println(err)
+	}
+
+	var verify_status bool
+
+	// Check status of transaction
+	q := `SELECT verify_status FROM transactions WHERE email = $1 AND reference = $2;`
+	row := dbTx.QueryRowContext(ctx, q, tnx.Email, tnx.Reference)
+	switch err := row.Scan(&verify_status); err {
+	case sql.ErrNoRows:
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	case nil:
+		if verify_status {
+			return true, true // Transaction has already been verified
+		}
+	default:
+		log.Println("default error ", err)
+	}
+
+	increaseBalance := `UPDATE balance 
+					  SET current_balance = current_balance + $1 
+					  WHERE email = $2;`
+
+	decreaseBalance := `UPDATE balance 
+						SET current_balance = current_balance - $1 
+						WHERE email = $2;`
+	if credit {
+		_, err := dbTx.ExecContext(ctx, increaseBalance, tnx.Amount, tnx.Email)
+		if err != nil {
+			log.Println(err)
+			_ = dbTx.Rollback()
+			return false, false
+		}
+	} else {
+		_, err := dbTx.ExecContext(ctx, decreaseBalance, tnx.Amount, tnx.Email)
+		if err != nil {
+			log.Println(err)
+			_ = dbTx.Rollback()
+			return false, false
+		}
+	}
+
+	updatetranx := `UPDATE transactions SET 
+						verify_status = true,
+						payment_status = $1,
+						payment_channel = $2 
+					WHERE email = $3;`
+
+	_, err = dbTx.ExecContext(ctx, updatetranx, tnx.Payment_status,
+		tnx.Payment_channel, tnx.Email)
+	if err != nil {
+		log.Println(err)
+		_ = dbTx.Rollback()
+		return false, false
+	}
+	err = dbTx.Commit()
+	if err != nil {
+		log.Println(err)
+		return false, false
+	}
+	fmt.Println("All went well")
+	return true, false
 }

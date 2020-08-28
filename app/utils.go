@@ -233,7 +233,7 @@ func hitPaystack(email string, amount int) (r config.PaystackResponse, err error
 	return r, nil
 }
 
-func paystackVerify(reference string) (res config.Transactions) {
+func paystackVerify(reference string) (res config.Transactions, attempted bool) {
 
 	var verifyLink = "https://api.paystack.co/transaction/verify/" + reference
 
@@ -266,10 +266,13 @@ func paystackVerify(reference string) (res config.Transactions) {
 		return
 	}
 
+	res.Reference = reference
 	res.Payment_channel = verifyPayload.Data.Channel
+	res.Amount = verifyPayload.Data.Amount
 	if verifyPayload.Data.Status == "failed" || verifyPayload.Data.Status == "success" {
 		res.Verify_status = true
 		res.Payment_status = true
+		return res, true
 	}
-	return res
+	return res, false
 }
