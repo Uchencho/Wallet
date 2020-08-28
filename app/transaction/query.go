@@ -422,7 +422,7 @@ func sendMoney(db *sql.DB, r recipient, email string) (bool, bool) {
 	) RETURNING id`
 
 	_, err = dbTx.ExecContext(ctx, query, email, -r.Amount, true, "wallet",
-		"wallet", "wallet", "walletPay", time.Now(), true)
+		"wallet", "wallet-to-wallet", "walletPay", time.Now(), true)
 	if err != nil {
 		log.Println(err)
 		_ = dbTx.Rollback()
@@ -438,7 +438,7 @@ func sendMoney(db *sql.DB, r recipient, email string) (bool, bool) {
 	) RETURNING id`
 
 	_, err = dbTx.ExecContext(ctx, query, r.Email, r.Amount, true, "wallet",
-		"wallet", "wallet", "walletPay", time.Now(), true)
+		"wallet", "wallet-to-wallet", "walletPay", time.Now(), true)
 	if err != nil {
 		log.Println(err)
 		_ = dbTx.Rollback()
