@@ -38,6 +38,11 @@ type GeneratePayment struct {
 	Amount int    `json:"amount"`
 }
 
+type UserBalance struct {
+	Current_balance int       `json:"current_balance"`
+	Last_update     time.Time `json:"last_update"`
+}
+
 type PaystackResponse struct {
 	Status  bool   `json:"status"`
 	Message string `json:"message"`
@@ -261,7 +266,7 @@ func CreateBalanceTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS balance (
 		id serial PRIMARY KEY,
-		email VARCHAR ( 50 ) NOT NULL,
+		email VARCHAR ( 50 ) UNIQUE NOT NULL,
 		current_balance INT NOT NULL,
 		last_update TIMESTAMP,
 		FOREIGN KEY(email)
@@ -399,4 +404,21 @@ func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
 		return false, false
 	}
 	return true, false
+}
+
+func GetCurrentBalance(db *sql.DB, email string) (bal UserBalance, err error) {
+
+	query := `SELECT current_balance, last_update FROM balance WHERE email = $1;`
+
+	row := db.QueryRow(query, email)
+	switch err := row.Scan(&bal.Current_balance, &bal.Last_update); err {
+	case sql.ErrNoRows:
+		log.Println("This is bad, user has no balance record")
+		return UserBalance{}, err
+	case nil:
+		return bal, nil
+	default:
+		return UserBalance{}, err
+	}
+
 }

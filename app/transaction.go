@@ -141,3 +141,30 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
 	}
 }
+
+func GetBalance(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authorized, email, err := checkAuth(req)
+	if !authorized {
+		unAuthorizedResponse(w, err)
+		return
+	}
+
+	switch req.Method {
+	case http.MethodGet:
+		userBal, err := config.GetCurrentBalance(Db, fmt.Sprint(email))
+		if err != nil {
+			log.Println("This should never happen ", err)
+			return
+		}
+		jsonResp, err := json.Marshal(userBal)
+		if err != nil {
+			log.Println("Error marshalling response")
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(jsonResp))
+		return
+	}
+}
