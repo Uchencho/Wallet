@@ -1,4 +1,4 @@
-package app
+package account
 
 import (
 	"encoding/json"
@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Uchencho/wallet/app/auth"
+	"github.com/Uchencho/wallet/app/transaction"
 	"github.com/Uchencho/wallet/config"
 )
 
@@ -37,8 +39,6 @@ type loginResponse struct {
 	Token     string    `json:"token"`
 }
 
-var Db = config.ConnectDatabase()
-
 func HealthCheck(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -63,7 +63,7 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch req.Method {
 	case http.MethodPost:
-		var user config.Accounts
+		var user Accounts
 
 		_ = json.NewDecoder(req.Body).Decode(&user)
 		if user.Username == "" || user.Password == "" || user.Email == "" {
@@ -74,12 +74,12 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 
 		user.CreatedOn = time.Now()
 		user.LastLogin = time.Now()
-		user.Password, _ = hashPassword(user.Password)
+		user.Password, _ = auth.HashPassword(user.Password)
 
-		if created := config.AddRecordToAccounts(Db, user); created {
+		if created := AddRecordToAccounts(config.Db, user); created {
 			w.WriteHeader(http.StatusCreated)
 			fmt.Fprint(w, `{"Message" : "Successfully Created"}`)
-			if !config.InitializeBalance(Db, user.Email) {
+			if !transaction.InitializeBalance(config.Db, user.Email) {
 				log.Println("Could not initialize balance for user", user.Email)
 				return
 			}
@@ -110,7 +110,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		user, err := config.GetUserLogin(Db, loginDet.Username)
+		user, err := GetUserLogin(config.Db, loginDet.Username)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -118,8 +118,8 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if checkPasswordHash(loginDet.Password, user.Password) {
-			accessToken, refreshToken, err := generateAuthTokens(user)
+		if auth.CheckPasswordHash(loginDet.Password, user.Password) {
+			accessToken, refreshToken, err := auth.GenerateAuthTokens(user.Email)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -158,16 +158,16 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 func UserProfile(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, email, err := checkAuth(req)
+	authorized, email, err := auth.CheckAuth(req)
 	if !authorized {
-		unAuthorizedResponse(w, err)
+		auth.UnAuthorizedResponse(w, err)
 		return
 	}
 
 	switch req.Method {
 	case http.MethodGet:
 
-		user, _ := config.GetUser(Db, fmt.Sprint(email))
+		user, _ := GetUser(config.Db, fmt.Sprint(email))
 		b := loginResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -186,7 +186,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprint(w, string(jsonResp))
 
 	case http.MethodPut:
-		var user config.Accounts
+		var user Accounts
 
 		_ = json.NewDecoder(req.Body).Decode(&user)
 		if user.Fullname == "" && user.Gender == "" {
@@ -196,7 +196,7 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		}
 
 		user.Email = fmt.Sprint(email)
-		err := config.EditUser(Db, &user)
+		err := EditUser(config.Db, &user)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Something went Wrong"}`)
@@ -218,11 +218,11 @@ func RefreshToken(w http.ResponseWriter, req *http.Request) {
 	case http.MethodPost:
 		token, err := req.Cookie("Refreshtoken")
 		if err != nil {
-			unAuthorizedResponse(w, errors.New(`{"Message" : "Credentials Not Sent"}`))
+			auth.UnAuthorizedResponse(w, errors.New(`{"Message" : "Credentials Not Sent"}`))
 			return
 		}
-		if authorized, email, _ := checkRefreshToken(token.Value); authorized {
-			accessString, err := newAccessToken(fmt.Sprint(email))
+		if authorized, email, _ := auth.CheckRefreshToken(token.Value); authorized {
+			accessString, err := auth.NewAccessToken(fmt.Sprint(email))
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprint(w, `{"Message" : "Could not generate accesstoken"}`)
@@ -251,9 +251,9 @@ func RefreshToken(w http.ResponseWriter, req *http.Request) {
 func Logout(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, _, err := checkAuth(req)
+	authorized, _, err := auth.CheckAuth(req)
 	if !authorized {
-		unAuthorizedResponse(w, err)
+		auth.UnAuthorizedResponse(w, err)
 		return
 	}
 	switch req.Method {

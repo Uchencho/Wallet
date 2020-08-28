@@ -4,29 +4,31 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Uchencho/wallet/app"
+	"github.com/Uchencho/wallet/app/account"
+	"github.com/Uchencho/wallet/app/transaction"
+	"github.com/Uchencho/wallet/app/utils"
 	"github.com/Uchencho/wallet/config"
 )
 
 func main() {
 
-	defer app.Db.Close()
+	defer config.Db.Close()
 
-	config.CreateAccountTable(app.Db)
-	config.CreateTransactionTable(app.Db)
-	config.CreateBalanceTable(app.Db)
+	config.CreateAccountTable(config.Db)
+	config.CreateTransactionTable(config.Db)
+	config.CreateBalanceTable(config.Db)
 
-	http.HandleFunc("/healthcheck", app.HealthCheck)
-	http.HandleFunc("/register", app.RegisterUser)
-	http.HandleFunc("/login", app.LoginUser)
-	http.HandleFunc("/profile", app.UserProfile)
-	http.HandleFunc("/refresh", app.RefreshToken)
-	http.HandleFunc("/logout", app.Logout)
-	http.HandleFunc("/fund", app.FundAccount)
-	http.HandleFunc("/transactions", app.TransactionHistory)
-	http.HandleFunc("/verify", app.VerifyTransaction)
-	http.HandleFunc("/current_balance", app.GetBalance)
-	if err := http.ListenAndServe(app.GetServerAddress(), nil); err != http.ErrServerClosed {
+	http.HandleFunc("/healthcheck", account.HealthCheck)
+	http.HandleFunc("/register", account.RegisterUser)
+	http.HandleFunc("/login", account.LoginUser)
+	http.HandleFunc("/profile", account.UserProfile)
+	http.HandleFunc("/refresh", account.RefreshToken)
+	http.HandleFunc("/logout", account.Logout)
+	http.HandleFunc("/fund", transaction.FundAccount)
+	http.HandleFunc("/transactions", transaction.TransactionHistory)
+	http.HandleFunc("/verify", transaction.VerifyTransaction)
+	http.HandleFunc("/current_balance", transaction.GetBalance)
+	if err := http.ListenAndServe(utils.GetServerAddress(), nil); err != http.ErrServerClosed {
 		fmt.Println(err)
 	}
 }

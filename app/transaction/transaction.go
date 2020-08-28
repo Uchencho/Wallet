@@ -1,4 +1,4 @@
-package app
+package transaction
 
 import (
 	"encoding/json"
@@ -7,15 +7,16 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/Uchencho/wallet/app/auth"
 	"github.com/Uchencho/wallet/config"
 )
 
 func FundAccount(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, email, err := checkAuth(req)
+	authorized, email, err := auth.CheckAuth(req)
 	if !authorized {
-		unAuthorizedResponse(w, err)
+		auth.UnAuthorizedResponse(w, err)
 		return
 	}
 
@@ -25,7 +26,7 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		// Get email and amount from post request, make sure amount is string
-		var pl config.GeneratePayment
+		var pl GeneratePayment
 		_ = json.NewDecoder(req.Body).Decode(&pl)
 		if pl.Amount == 0 {
 			w.WriteHeader(http.StatusBadRequest)
@@ -34,7 +35,7 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 		}
 		pl.Email = fmt.Sprint(email)
 		// Hit paystack to return link
-		result, err := hitPaystack(pl.Email, pl.Amount*100)
+		result, err := HitPaystack(pl.Email, pl.Amount*100)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Something went wrong"}`)
@@ -42,7 +43,7 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 
 		// Send details to db
 		go func() {
-			if !config.AddTransaction(Db, pl, result) {
+			if !AddTransaction(config.Db, pl, result) {
 				log.Println("Could not add transaction to database")
 			}
 			wg.Done()
@@ -63,15 +64,15 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 func TransactionHistory(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, email, err := checkAuth(req)
+	authorized, email, err := auth.CheckAuth(req)
 	if !authorized {
-		unAuthorizedResponse(w, err)
+		auth.UnAuthorizedResponse(w, err)
 		return
 	}
 
 	switch req.Method {
 	case http.MethodGet:
-		transactions := config.GetTransactions(Db, fmt.Sprint(email))
+		transactions := GetTransactions(config.Db, fmt.Sprint(email))
 		if transactions == nil {
 			fmt.Fprint(w, `[]`)
 			return
@@ -88,15 +89,15 @@ func TransactionHistory(w http.ResponseWriter, req *http.Request) {
 func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, email, err := checkAuth(req)
+	authorized, email, err := auth.CheckAuth(req)
 	if !authorized {
-		unAuthorizedResponse(w, err)
+		auth.UnAuthorizedResponse(w, err)
 		return
 	}
 
 	switch req.Method {
 	case http.MethodPost:
-		var tranx config.Transactions
+		var tranx Transactions
 
 		_ = json.NewDecoder(req.Body).Decode(&tranx)
 		if tranx.Reference == "" {
@@ -105,7 +106,7 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		result, attempted := paystackVerify(tranx.Reference)
+		result, attempted := PaystackVerify(tranx.Reference)
 		result.Email = fmt.Sprint(email)
 
 		if !attempted {
@@ -114,7 +115,7 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Write to db, update transaction table and balance table
-		addedToDB, alreadyverified := config.UpdateTransaction(Db, result, true) // Only credits
+		addedToDB, alreadyverified := UpdateTransaction(config.Db, result, true) // Only credits
 		if alreadyverified {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Transaction has already been verified"}`)
@@ -145,15 +146,15 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 func GetBalance(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authorized, email, err := checkAuth(req)
+	authorized, email, err := auth.CheckAuth(req)
 	if !authorized {
-		unAuthorizedResponse(w, err)
+		auth.UnAuthorizedResponse(w, err)
 		return
 	}
 
 	switch req.Method {
 	case http.MethodGet:
-		userBal, err := config.GetCurrentBalance(Db, fmt.Sprint(email))
+		userBal, err := GetCurrentBalance(config.Db, fmt.Sprint(email))
 		if err != nil {
 			log.Println("This should never happen ", err)
 			return
