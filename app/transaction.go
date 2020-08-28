@@ -114,7 +114,7 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Write to db, update transaction table and balance table
-		_, alreadyverified := config.UpdateTransaction(Db, result, true) // Only credits
+		addedToDB, alreadyverified := config.UpdateTransaction(Db, result, true) // Only credits
 		if alreadyverified {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Transaction has already been verified"}`)
@@ -122,13 +122,19 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		switch {
+		switch addedToDB {
 		case result.Payment_status:
 			fmt.Fprint(w, `{"Message" : "Transaction was successful and has been updated accordingly"}`)
 		default:
 			fmt.Fprint(w, `{"Message" : "Transaction failed"}`)
+			return
 		}
-		return
+
+		if !addedToDB {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"Message" : "Something went wrong, please try again"}`)
+			return
+		}
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)

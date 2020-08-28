@@ -271,7 +271,11 @@ func paystackVerify(reference string) (res config.Transactions, attempted bool) 
 	res.Amount = verifyPayload.Data.Amount
 	if verifyPayload.Data.Status == "failed" || verifyPayload.Data.Status == "success" {
 		res.Verify_status = true
-		res.Payment_status = true
+		if verifyPayload.Data.Status == "failed" {
+			res.Payment_status = false
+		} else {
+			res.Payment_status = true
+		}
 		return res, true
 	}
 	return res, false

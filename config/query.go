@@ -352,26 +352,31 @@ func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
 		log.Println("default error ", err)
 	}
 
-	increaseBalance := `UPDATE balance 
-					  SET current_balance = current_balance + $1 
-					  WHERE email = $2;`
+	if tnx.Payment_status {
 
-	decreaseBalance := `UPDATE balance 
-						SET current_balance = current_balance - $1 
-						WHERE email = $2;`
-	if credit {
-		_, err := dbTx.ExecContext(ctx, increaseBalance, tnx.Amount, tnx.Email)
-		if err != nil {
-			log.Println(err)
-			_ = dbTx.Rollback()
-			return false, false
-		}
-	} else {
-		_, err := dbTx.ExecContext(ctx, decreaseBalance, tnx.Amount, tnx.Email)
-		if err != nil {
-			log.Println(err)
-			_ = dbTx.Rollback()
-			return false, false
+		increaseBalance := `UPDATE balance SET 
+							current_balance = current_balance + $1,
+							last_update = $2
+					  WHERE email = $3;`
+
+		decreaseBalance := `UPDATE balance SET 
+							current_balance = current_balance - $1,
+							last_update = $2
+						WHERE email = $3;`
+		if credit {
+			_, err := dbTx.ExecContext(ctx, increaseBalance, tnx.Amount/100, time.Now(), tnx.Email)
+			if err != nil {
+				log.Println(err)
+				_ = dbTx.Rollback()
+				return false, false
+			}
+		} else {
+			_, err := dbTx.ExecContext(ctx, decreaseBalance, tnx.Amount/100, time.Now(), tnx.Email)
+			if err != nil {
+				log.Println(err)
+				_ = dbTx.Rollback()
+				return false, false
+			}
 		}
 	}
 
@@ -393,6 +398,5 @@ func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
 		log.Println(err)
 		return false, false
 	}
-	fmt.Println("All went well")
 	return true, false
 }
