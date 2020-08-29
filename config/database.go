@@ -3,16 +3,9 @@ package config
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	_ "github.com/lib/pq"
-)
-
-const (
-	POSTGRES_USER     = "golang"
-	POSTGRES_PASSWORD = "googleGo"
-	DB_NAME           = "wallet"
-	POSTGRES_HOST     = "localhost"
-	POSTGRES_PORT     = 5432
 )
 
 func ConnectDatabase() *sql.DB {
@@ -20,9 +13,9 @@ func ConnectDatabase() *sql.DB {
 		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD,
 		DB_NAME)
 
-	db, err := sql.Open("postgres", postgres_conn)
+	db, err := sql.Open("postgres", postgres_conn) //os.get(db url) for production
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		panic("Failed to connect to database")
 	}
 
@@ -31,7 +24,7 @@ func ConnectDatabase() *sql.DB {
 		panic(bdErr)
 	}
 
-	fmt.Println("Connected")
+	fmt.Println("Connected") // Remember to remove this in production
 
 	return db
 }
