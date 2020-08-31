@@ -12,5 +12,5 @@ func GetServerAddress() string {
 		log.Println("Found default address, ", serverAddress)
 		return serverAddress
 	}
-	return ":3000"
+	return "3000"
 }
