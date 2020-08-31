@@ -11,7 +11,7 @@ import (
 
 func databaseURL() string {
 
-	dBUrl, present := os.LookupEnv("PORT")
+	dBUrl, present := os.LookupEnv("DATABASE_URL")
 	if present {
 		return dBUrl
 	}
