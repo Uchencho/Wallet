@@ -33,7 +33,7 @@ func main() {
 	http.HandleFunc("/current_balance", transaction.GetBalance)
 	http.HandleFunc("/transfer", transaction.TransferFunds)
 	http.HandleFunc("/pay", transaction.PayForItem)
-	if err := http.ListenAndServe(""+utils.GetServerAddress(), nil); err != http.ErrServerClosed {
+	if err := http.ListenAndServe(":"+utils.GetServerAddress(), nil); err != http.ErrServerClosed {
 		log.Println(err)
 	}
 }
