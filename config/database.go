@@ -4,16 +4,26 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 )
 
-func ConnectDatabase() *sql.DB {
+func databaseURL() string {
+
+	dBUrl, present := os.LookupEnv("PORT")
+	if present {
+		return dBUrl
+	}
 	postgres_conn := fmt.Sprintf("host=%s port=%d user=%s "+"password=%s dbname=%s sslmode=disable",
 		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD,
 		DB_NAME)
+	return postgres_conn
+}
 
-	db, err := sql.Open("postgres", postgres_conn) //os.get(db url) for production
+func ConnectDatabase() *sql.DB {
+
+	db, err := sql.Open("postgres", databaseURL())
 	if err != nil {
 		log.Println(err)
 		panic("Failed to connect to database")
@@ -23,9 +33,6 @@ func ConnectDatabase() *sql.DB {
 	if bdErr != nil {
 		panic(bdErr)
 	}
-
-	fmt.Println("Connected") // Remember to remove this in production
-
 	return db
 }
 
