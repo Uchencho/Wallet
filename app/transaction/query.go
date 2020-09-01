@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Uchencho/wallet/config"
@@ -69,6 +70,14 @@ type verifyPaystackResponse struct {
 	} `json:"data"`
 }
 
+func getPaystacKey() string {
+	pKey, present := os.LookupEnv("paystack_key")
+	if present {
+		return pKey
+	}
+	return config.Paystack_key
+}
+
 type GeneratePayment struct {
 	Email  string `json:"email"`
 	Amount int    `json:"amount"`
@@ -121,7 +130,7 @@ func HitPaystack(email string, amount int) (r PaystackResponse, err error) {
 		log.Println(err)
 		return PaystackResponse{}, err
 	}
-	value := "Bearer " + config.Paystack_key
+	value := "Bearer " + getPaystacKey()
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Authorization", value)
 
@@ -155,7 +164,7 @@ func PaystackVerify(reference string) (res Transactions, attempted bool) {
 		log.Println(err)
 		return Transactions{}, false
 	}
-	value := "Bearer " + config.Paystack_key
+	value := "Bearer " + getPaystacKey()
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Authorization", value)
 
