@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func checkUser(db *sql.DB, user Accounts) bool {
 	case nil:
 		return true
 	default:
-		fmt.Println(err)
+		log.Println("Uncaught error in checking user, ", err)
 		return false
 	}
 }
@@ -64,7 +65,7 @@ func GetUser(db *sql.DB, email string) (Accounts, error) {
 		}
 		return user, nil
 	default:
-		fmt.Println(err)
+		log.Println("Getting user returned an uncaught error ", err)
 		return Accounts{}, err
 	}
 }
@@ -74,14 +75,6 @@ func GetUserLogin(db *sql.DB, username string) (Accounts, error) {
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return Accounts{}, err
-	}
-
-	updateLoginQuery := `UPDATE accounts SET last_login = $1 WHERE username = $2`
-
-	_, err = tx.ExecContext(ctx, updateLoginQuery, time.Now(), username)
-	if err != nil {
-		_ = tx.Rollback()
 		return Accounts{}, err
 	}
 
@@ -101,10 +94,6 @@ func GetUserLogin(db *sql.DB, username string) (Accounts, error) {
 		_ = tx.Rollback()
 		return Accounts{}, err
 	case nil:
-		err = tx.Commit()
-		if err != nil {
-			fmt.Println(err)
-		}
 		if f == nil {
 			user.Fullname = ""
 		} else {
@@ -116,11 +105,24 @@ func GetUserLogin(db *sql.DB, username string) (Accounts, error) {
 		} else {
 			user.Gender = fmt.Sprint(g)
 		}
-		return user, nil
 	default:
-		fmt.Println(err)
+		log.Println("Getting user for login returned uncaught error ", err)
 		return Accounts{}, err
 	}
+
+	updateLoginQuery := `UPDATE accounts SET last_login = $1 WHERE username = $2`
+	_, err = tx.ExecContext(ctx, updateLoginQuery, time.Now(), username)
+	if err != nil {
+		_ = tx.Rollback()
+		return Accounts{}, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println("Error occured when trying to commit the transaction ", err)
+	}
+	return user, nil
+
 }
 
 func EditUser(db *sql.DB, user *Accounts) error {
@@ -128,6 +130,7 @@ func EditUser(db *sql.DB, user *Accounts) error {
 
 	_, err := db.Exec(query, user.Fullname, user.Gender, user.Email)
 	if err != nil {
+		log.Println("Error occured in trying to edit user details ", err)
 		return err
 	}
 	return nil
@@ -148,7 +151,7 @@ func AddRecordToAccounts(db *sql.DB, user Accounts) bool {
 	_, err := db.Exec(query, user.Username, user.Email, user.Password,
 		user.CreatedOn, user.LastLogin)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("Error occurred in adding details to account table ", err)
 	}
 	return true
 }

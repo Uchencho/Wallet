@@ -2,7 +2,6 @@ package config
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 )
 
@@ -22,7 +21,7 @@ func CreateAccountTable(db *sql.DB) {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
 
@@ -32,10 +31,10 @@ func DropTable(db *sql.DB) {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
-	fmt.Println("\n\n Table dropped successfully")
+	// fmt.Println("\n\n Table dropped successfully")
 }
 
 func CreateTransactionTable(db *sql.DB) {

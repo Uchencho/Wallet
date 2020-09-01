@@ -25,20 +25,21 @@ func FundAccount(w http.ResponseWriter, req *http.Request) {
 
 		var wg sync.WaitGroup
 		wg.Add(1)
-		// Get email and amount from post request, make sure amount is string
+		// Get email and amount from post request, make sure value is positive
 		var pl GeneratePayment
 		_ = json.NewDecoder(req.Body).Decode(&pl)
-		if pl.Amount == 0 {
+		if pl.Amount <= 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprint(w, `{"Message" : "Amount is needed"}`)
+			fmt.Fprint(w, `{"Message" : "Positive Amount value is needed"}`)
 			return
 		}
 		pl.Email = fmt.Sprint(email)
 		// Hit paystack to return link
 		result, err := HitPaystack(pl.Email, pl.Amount*100)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			fmt.Fprint(w, `{"Message" : "Something went wrong"}`)
+			return
 		}
 
 		// Send details to db
@@ -117,10 +118,16 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Write to db, update transaction table and balance table
-		addedToDB, alreadyverified := UpdateTransaction(config.Db, result, true) // Only credits
+		addedToDB, alreadyverified := UpdateTransaction(config.Db, result)
 		if alreadyverified {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Transaction has already been verified"}`)
+			return
+		}
+
+		if !addedToDB {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"Message" : "Something went wrong, please try again"}`)
 			return
 		}
 
@@ -128,14 +135,9 @@ func VerifyTransaction(w http.ResponseWriter, req *http.Request) {
 		switch addedToDB {
 		case result.Payment_status:
 			fmt.Fprint(w, `{"Message" : "Transaction was successful and has been updated accordingly"}`)
+			return
 		default:
 			fmt.Fprint(w, `{"Message" : "Transaction failed"}`)
-			return
-		}
-
-		if !addedToDB {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, `{"Message" : "Something went wrong, please try again"}`)
 			return
 		}
 
@@ -159,9 +161,12 @@ func GetBalance(w http.ResponseWriter, req *http.Request) {
 	case http.MethodGet:
 		userBal, err := GetCurrentBalance(config.Db, fmt.Sprint(email))
 		if err != nil {
-			log.Println("This should never happen ", err)
+			log.Println("Error occured in getting balance ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"mesage":"Something went wrong"}`)
 			return
 		}
+
 		jsonResp, err := json.Marshal(userBal)
 		if err != nil {
 			log.Println("Error marshalling response")
@@ -191,7 +196,7 @@ func TransferFunds(w http.ResponseWriter, req *http.Request) {
 		var pl recipient
 		_ = json.NewDecoder(req.Body).Decode(&pl)
 
-		if pl.Amount == 0 || pl.Email == "" {
+		if pl.Amount <= 0 || pl.Email == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message" : "Amount/Email necessary"}`)
 			return

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Uchencho/wallet/config"
@@ -69,6 +70,14 @@ type verifyPaystackResponse struct {
 	} `json:"data"`
 }
 
+func getPaystacKey() string {
+	pKey, present := os.LookupEnv("paystack_key")
+	if present {
+		return pKey
+	}
+	return config.Paystack_key
+}
+
 type GeneratePayment struct {
 	Email  string `json:"email"`
 	Amount int    `json:"amount"`
@@ -119,8 +128,9 @@ func HitPaystack(email string, amount int) (r PaystackResponse, err error) {
 	req, err := http.NewRequest("POST", paylink, bytes.NewBuffer(reqBody))
 	if err != nil {
 		log.Println(err)
+		return PaystackResponse{}, err
 	}
-	value := "Bearer " + config.Paystack_key
+	value := "Bearer " + getPaystacKey()
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Authorization", value)
 
@@ -134,11 +144,13 @@ func HitPaystack(email string, amount int) (r PaystackResponse, err error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error making a request to Paystack")
+		return PaystackResponse{}, err
 	}
 
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		log.Println("Error making a request to Paystack")
+		return PaystackResponse{}, err
 	}
 	return r, nil
 }
@@ -150,8 +162,9 @@ func PaystackVerify(reference string) (res Transactions, attempted bool) {
 	req, err := http.NewRequest("GET", verifyLink, bytes.NewBuffer([]byte{}))
 	if err != nil {
 		log.Println(err)
+		return Transactions{}, false
 	}
-	value := "Bearer " + config.Paystack_key
+	value := "Bearer " + getPaystacKey()
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Authorization", value)
 
@@ -159,21 +172,21 @@ func PaystackVerify(reference string) (res Transactions, attempted bool) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Error making request to paystack, ", err)
-		return
+		return Transactions{}, false
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading the body, ", err)
-		return
+		return Transactions{}, false
 	}
 
 	var verifyPayload verifyPaystackResponse
 	err = json.Unmarshal(body, &verifyPayload)
 	if err != nil {
 		log.Println("Error Unmarshalling json, ", err)
-		return
+		return Transactions{}, false
 	}
 
 	res.Reference = reference
@@ -204,7 +217,7 @@ func AddTransaction(db *sql.DB, p GeneratePayment, res PaystackResponse) bool {
 		res.Data.AuthorizationURL, res.Data.Reference, "", time.Now(), false)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Error in adding transaction to database", err)
 		return false
 	}
 	return true
@@ -261,7 +274,7 @@ func InitializeBalance(db *sql.DB, email string) bool {
 }
 
 // Returns status of query and if transaction has already been verified
-func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
+func UpdateTransaction(db *sql.DB, tnx Transactions) (bool, bool) {
 
 	ctx := context.Background()
 	dbTx, err := db.BeginTx(ctx, nil)
@@ -295,24 +308,11 @@ func UpdateTransaction(db *sql.DB, tnx Transactions, credit bool) (bool, bool) {
 							last_update = $2
 					  WHERE email = $3;`
 
-		decreaseBalance := `UPDATE balance SET 
-							current_balance = current_balance - $1,
-							last_update = $2
-						WHERE email = $3;`
-		if credit {
-			_, err := dbTx.ExecContext(ctx, increaseBalance, tnx.Amount/100, time.Now(), tnx.Email)
-			if err != nil {
-				log.Println(err)
-				_ = dbTx.Rollback()
-				return false, false
-			}
-		} else {
-			_, err := dbTx.ExecContext(ctx, decreaseBalance, tnx.Amount/100, time.Now(), tnx.Email)
-			if err != nil {
-				log.Println(err)
-				_ = dbTx.Rollback()
-				return false, false
-			}
+		_, err := dbTx.ExecContext(ctx, increaseBalance, tnx.Amount/100, time.Now(), tnx.Email)
+		if err != nil {
+			log.Println(err)
+			_ = dbTx.Rollback()
+			return false, false
 		}
 	}
 
@@ -378,6 +378,7 @@ func sendMoney(db *sql.DB, r recipient, email string) (bool, bool) {
 		}
 	default:
 		log.Println(err)
+		return false, false
 	}
 
 	// Check if recipient has a balance record
@@ -479,6 +480,7 @@ func deductBalance(db *sql.DB, amount int, email string) (bool, bool) {
 		}
 	default:
 		log.Println(err)
+		return false, false
 	}
 
 	// Deduct the user's wallet

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/Uchencho/wallet/app/account"
@@ -33,7 +33,7 @@ func main() {
 	http.HandleFunc("/current_balance", transaction.GetBalance)
 	http.HandleFunc("/transfer", transaction.TransferFunds)
 	http.HandleFunc("/pay", transaction.PayForItem)
-	if err := http.ListenAndServe(utils.GetServerAddress(), nil); err != http.ErrServerClosed {
-		fmt.Println(err)
+	if err := http.ListenAndServe(":"+utils.GetServerAddress(), nil); err != http.ErrServerClosed {
+		log.Println(err)
 	}
 }

@@ -51,9 +51,11 @@ func HealthCheck(w http.ResponseWriter, req *http.Request) {
 		}
 		jsonResp, _ := json.Marshal(resp)
 		fmt.Fprint(w, string(jsonResp))
+		return
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"message" : "Method Not Allowed"}`)
+		return
 	}
 
 }
@@ -63,7 +65,10 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch req.Method {
 	case http.MethodPost:
-		var user Accounts
+		var (
+			user Accounts
+			err  error
+		)
 
 		_ = json.NewDecoder(req.Body).Decode(&user)
 		if user.Username == "" || user.Password == "" || user.Email == "" {
@@ -74,7 +79,14 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 
 		user.CreatedOn = time.Now()
 		user.LastLogin = time.Now()
-		user.Password, _ = auth.HashPassword(user.Password)
+		user.Password, err = auth.HashPassword(user.Password)
+
+		if err != nil {
+			log.Println("Error occurred in hashing password, ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"message" : "Something went wrong"}`)
+			return
+		}
 
 		if created := AddRecordToAccounts(config.Db, user); created {
 			w.WriteHeader(http.StatusCreated)
@@ -92,6 +104,7 @@ func RegisterUser(w http.ResponseWriter, req *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 
 }
@@ -112,7 +125,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 
 		user, err := GetUserLogin(config.Db, loginDet.Username)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message":"User does not exist"}`)
 			return
@@ -136,7 +149,7 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 			}
 			jsonResp, err := json.Marshal(b)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 
 			expire := time.Now().Add(time.Hour * 6)
@@ -144,14 +157,17 @@ func LoginUser(w http.ResponseWriter, req *http.Request) {
 				Expires: expire, HttpOnly: true} // extra agruement, Secure : true, test this on deployment
 			http.SetCookie(w, &cookie)
 			fmt.Fprint(w, string(jsonResp))
+			return
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"Message":"Invalid credentials"}`)
+			return
 		}
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message":"Method not allowed"}`)
+		return
 	}
 }
 
@@ -167,7 +183,14 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case http.MethodGet:
 
-		user, _ := GetUser(config.Db, fmt.Sprint(email))
+		user, err := GetUser(config.Db, fmt.Sprint(email))
+		if err != nil {
+			log.Println("Error occured in getting user ,", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"message" : "something went wrong"}`)
+			return
+		}
+
 		b := loginResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -181,9 +204,10 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 
 		jsonResp, err := json.Marshal(b)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 		fmt.Fprint(w, string(jsonResp))
+		return
 
 	case http.MethodPut:
 		var user Accounts
@@ -204,10 +228,12 @@ func UserProfile(w http.ResponseWriter, req *http.Request) {
 		}
 		w.WriteHeader(http.StatusAccepted)
 		fmt.Fprint(w, `{"Message" : "Successfully Edited"}`)
+		return
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 }
 
@@ -221,6 +247,7 @@ func RefreshToken(w http.ResponseWriter, req *http.Request) {
 			auth.UnAuthorizedResponse(w, errors.New(`{"Message" : "Credentials Not Sent"}`))
 			return
 		}
+
 		if authorized, email, _ := auth.CheckRefreshToken(token.Value); authorized {
 			accessString, err := auth.NewAccessToken(fmt.Sprint(email))
 			if err != nil {
@@ -231,19 +258,25 @@ func RefreshToken(w http.ResponseWriter, req *http.Request) {
 			message := accessToken{accessString}
 			jsonResp, err := json.Marshal(message)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 			cookie := http.Cookie{Name: "Refreshtoken", Value: token.Value, Path: "/",
 				HttpOnly: true} // extra agruement, Secure : true, test this on deployment
 			http.SetCookie(w, &cookie)
+
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, string(jsonResp))
 			return
 		}
 
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, `{"Message" : "Please login"}`)
+		return
+
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 
 }
@@ -263,9 +296,11 @@ func Logout(w http.ResponseWriter, req *http.Request) {
 		http.SetCookie(w, &cookie)
 		w.WriteHeader(http.StatusNoContent)
 		fmt.Fprint(w, `{"Message" : "Goodbye!"}`)
+		return
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, `{"Message" : "Method not allowed"}`)
+		return
 	}
 
 }

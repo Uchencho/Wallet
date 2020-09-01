@@ -6,7 +6,7 @@ import (
 
 func GetServerAddress() string {
 	const defaultServerAddress = "127.0.0.1:8000"
-	serverAddress, present := os.LookupEnv("SERVER_ADDRESS")
+	serverAddress, present := os.LookupEnv("PORT")
 	if present {
 		return serverAddress
 	}
