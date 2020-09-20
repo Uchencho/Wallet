@@ -9,6 +9,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	POSTGRES_USER     = "golang"
+	POSTGRES_PASSWORD = "googleGo"
+	DB_NAME           = "wallet"
+	POSTGRES_HOST     = "localhost"
+	POSTGRES_PORT     = 5432
+)
+
 func databaseURL() string {
 
 	dBUrl, present := os.LookupEnv("DATABASE_URL")

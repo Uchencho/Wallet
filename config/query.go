@@ -5,6 +5,8 @@ import (
 	"log"
 )
 
+const Paystack_key = "sk_test_acca9e854e36539a5e88d3b2b635870e2cb9a3f1"
+
 func CreateAccountTable(db *sql.DB) {
 
 	query := `CREATE TABLE IF NOT EXISTS accounts (
