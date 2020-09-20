@@ -12,6 +12,9 @@ import (
 )
 
 func HashPassword(password string) (string, error) {
+	if len(password) == 0 {
+		return "", errors.New("Can't has an empty string")
+	}
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 4)
 	return string(bytes), err
 }
@@ -26,7 +29,12 @@ var (
 	refreshSigningKey = []byte("b178604f6216f904f394641fd167078e426d5fe9ce20d4c07a65e8dd051a40d9")
 )
 
+// Returns accesstoken, refreshtoken and error
 func GenerateAuthTokens(email string) (string, string, error) {
+
+	if len(email) == 0 {
+		return "", "", errors.New("Can't generate tokens for empty email")
+	}
 
 	// Access token
 	token := jwt.New(jwt.SigningMethodHS256)
